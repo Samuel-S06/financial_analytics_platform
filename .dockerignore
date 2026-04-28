@@ -1,0 +1,15 @@
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.venv
+**/venv
+**/node_modules
+**/dist
+**/.git
+**/.github
+**/terraform
+**/helm
+**/.env
+**/.DS_Store
+README.md
+Makefile

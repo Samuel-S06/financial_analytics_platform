@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-platform.labels" . | nindent 4 }}
+    app: backend
+spec:
+  # When HPA is on, it owns the replica count - we omit it here so they don't
+  # fight. Without HPA we set it from values.
+  {{- if not .Values.backend.autoscaling.enabled }}
+  replicas: {{ .Values.backend.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        {{- include "financial-platform.labels" . | nindent 8 }}
+    spec:
+      # Run as non-root - matches how the Dockerfile creates the `app` user.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+      - name: backend
+        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.backend.port }}
+        # Pull config from the ConfigMap. Using envFrom rather than env: lets
+        # us add new keys to the ConfigMap without editing this template.
+        envFrom:
+        - configMapRef:
+            name: backend-config
+        # Liveness probe: if /health fails, k8s restarts the pod. Keep this
+        # cheap and local (no external dependencies) - a hung Redis shouldn't
+        # cause restart loops.
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.backend.port }}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+        # Readiness probe: if /ready fails, k8s stops sending traffic but
+        # leaves the pod running. This is the right behavior for transient
+        # downstream issues (Redis flapping, etc.).
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: {{ .Values.backend.port }}
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.backend.resources | nindent 10 }}

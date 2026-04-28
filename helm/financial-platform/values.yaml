@@ -1,0 +1,60 @@
+# Default values for financial-platform.
+# Override per-environment by passing -f values-prod.yaml or --set on the CLI.
+
+namespace: financial-platform
+
+# --- Backend ---------------------------------------------------------------
+backend:
+  image:
+    repository: financial-platform/backend
+    # Tag matches what we build in the Makefile. In CI we'd override this with
+    # the git SHA so each build is uniquely addressable.
+    tag: dev
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # HPA settings - kicks in when CPU usage exceeds the target. Demo'able by
+  # hammering the service with `hey` or `ab`.
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+
+# --- Frontend --------------------------------------------------------------
+frontend:
+  image:
+    repository: financial-platform/frontend
+    tag: dev
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Redis (job store) -----------------------------------------------------
+redis:
+  image: redis:7.4-alpine
+  port: 6379
+  # Single replica - this is a job store, not a critical primary database.
+  # If we needed HA we'd use a real Redis chart with sentinels.
+  storage:
+    size: 1Gi
+
+# --- Ingress ---------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  host: financial.local  # add to /etc/hosts pointing at `minikube ip`

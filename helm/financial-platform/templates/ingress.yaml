@@ -1,0 +1,43 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: financial-platform
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-platform.labels" . | nindent 4 }}
+  annotations:
+    # Strip /api prefix before forwarding so backend routes can stay clean
+    # (/health, /hello, not /api/health). The use-regex annotation lets us
+    # use the regex capture group syntax in path matches.
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+  - host: {{ .Values.ingress.host }}
+    http:
+      paths:
+      # The /api capture-group rule. The (/|$)(.*) pattern captures everything
+      # after /api into $2, which the rewrite-target annotation injects.
+      # /api/health -> backend gets /health, /api/hello -> /hello, etc.
+      - path: /api(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: backend
+            port:
+              number: {{ .Values.backend.port }}
+      # Catchall for the frontend. Also uses a capture-group pattern so the
+      # rewrite-target works correctly here too: /(.*) captures the full path
+      # into $2, so a request for /assets/index.js stays as /assets/index.js
+      # when forwarded to the frontend nginx (rather than getting blanked out
+      # by the rewrite annotation, which is the default behavior).
+      - path: /()(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: frontend
+            port:
+              number: {{ .Values.frontend.port }}
+{{- end }}

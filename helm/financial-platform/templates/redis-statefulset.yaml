@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-platform.labels" . | nindent 4 }}
+    app: redis
+spec:
+  # StatefulSet (not Deployment) because we want stable DNS names and a stable
+  # PersistentVolumeClaim per pod. With a Deployment, the PVC isn't tied to
+  # the pod identity and weird things happen on restart.
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        {{- include "financial-platform.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: redis
+        image: {{ .Values.redis.image }}
+        ports:
+        - containerPort: {{ .Values.redis.port }}
+          name: redis
+        # Append-only file: durable persistence for job state across pod restarts.
+        args: ["redis-server", "--appendonly", "yes"]
+        livenessProbe:
+          tcpSocket:
+            port: {{ .Values.redis.port }}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          # `redis-cli ping` is the canonical Redis healthcheck.
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+  # PVC template: each replica gets its own claim. With replicas: 1 there's
+  # only one, but this is the right shape if we ever scale up.
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: {{ .Values.redis.storage.size }}

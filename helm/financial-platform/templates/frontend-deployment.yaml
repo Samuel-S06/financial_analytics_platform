@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-platform.labels" . | nindent 4 }}
+    app: frontend
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        {{- include "financial-platform.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.frontend.port }}
+        env:
+        # nginx.conf substitutes this at container start. Points at the
+        # backend Service via in-cluster DNS.
+        - name: BACKEND_URL
+          value: "http://backend:8000"
+        # Nginx is happy to liveness-check on the root path - it doesn't need
+        # the backend to be healthy to serve static files.
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.frontend.port }}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.frontend.port }}
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}

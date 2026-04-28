@@ -1,0 +1,1 @@
+"""Spending analytics - placeholder. Will compute per-category breakdowns."""
