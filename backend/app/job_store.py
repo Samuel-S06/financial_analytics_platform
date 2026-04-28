@@ -21,18 +21,31 @@ FAILED = "failed"
 
 
 class JobStore:
-    def create(self) -> str: raise NotImplementedError
-    def set_status(self, job_id: str, status: str, error: str | None = None) -> None: raise NotImplementedError
-    def set_result(self, job_id: str, result: dict[str, Any]) -> None: raise NotImplementedError
-    def get(self, job_id: str) -> dict[str, Any] | None: raise NotImplementedError
-    def set_dataframe(self, job_id: str, df: pd.DataFrame) -> None: raise NotImplementedError
-    def get_dataframe(self, job_id: str) -> pd.DataFrame | None: raise NotImplementedError
+    def create(self) -> str:
+        raise NotImplementedError
+
+    def set_status(
+        self, job_id: str, status: str, error: str | None = None
+    ) -> None:
+        raise NotImplementedError
+
+    def set_result(self, job_id: str, result: dict[str, Any]) -> None:
+        raise NotImplementedError
+
+    def get(self, job_id: str) -> dict[str, Any] | None:
+        raise NotImplementedError
+
+    def set_dataframe(self, job_id: str, df: pd.DataFrame) -> None:
+        raise NotImplementedError
+
+    def get_dataframe(self, job_id: str) -> pd.DataFrame | None:
+        raise NotImplementedError
 
 
 class RedisJobStore(JobStore):
     def __init__(self, host: str, port: int, ttl: int):
-        # Note: decode_responses=False because DataFrames are stored as binary parquet.
-        # We decode JSON manually for the job records.
+        # decode_responses=False because DataFrames are stored as binary parquet.
+        # JSON records get decoded manually.
         self.client = redis.Redis(host=host, port=port, decode_responses=False)
         self.ttl = ttl
 
@@ -50,16 +63,21 @@ class RedisJobStore(JobStore):
         self.client.set(self._key(job_id), json.dumps(record).encode(), ex=self.ttl)
         return job_id
 
-    def set_status(self, job_id: str, status: str, error: str | None = None) -> None:
+    def set_status(
+        self, job_id: str, status: str, error: str | None = None
+    ) -> None:
         record = self.get(job_id)
-        if record is None: return
+        if record is None:
+            return
         record["status"] = status
-        if error is not None: record["error"] = error
+        if error is not None:
+            record["error"] = error
         self.client.set(self._key(job_id), json.dumps(record).encode(), ex=self.ttl)
 
     def set_result(self, job_id: str, result: dict[str, Any]) -> None:
         record = self.get(job_id)
-        if record is None: return
+        if record is None:
+            return
         record["status"] = DONE
         record["result"] = result
         self.client.set(self._key(job_id), json.dumps(record).encode(), ex=self.ttl)
@@ -69,11 +87,9 @@ class RedisJobStore(JobStore):
         return json.loads(raw.decode()) if raw else None
 
     def set_dataframe(self, job_id: str, df: pd.DataFrame) -> None:
-        # Serialize DataFrame to parquet bytes. Parquet preserves dtypes and is
-        # much faster than pickle for tabular data.
+        # Parquet preserves dtypes and is faster than pickle for tabular data.
         buf = io.BytesIO()
         df.to_parquet(buf, engine="pyarrow")
-        # Also stash the attrs (rows_kept/rows_dropped) since parquet drops them.
         meta_key = f"{self._df_key(job_id)}:meta"
         self.client.set(self._df_key(job_id), buf.getvalue(), ex=self.ttl)
         self.client.set(meta_key, json.dumps(dict(df.attrs)).encode(), ex=self.ttl)
@@ -83,7 +99,6 @@ class RedisJobStore(JobStore):
         if raw is None:
             return None
         df = pd.read_parquet(io.BytesIO(raw), engine="pyarrow")
-        # Restore attrs from the side-channel
         meta = self.client.get(f"{self._df_key(job_id)}:meta")
         if meta:
             df.attrs.update(json.loads(meta.decode()))
@@ -105,18 +120,28 @@ class InMemoryJobStore(JobStore):
     def create(self) -> str:
         job_id = str(uuid.uuid4())
         with self._lock:
-            self._jobs[job_id] = {"job_id": job_id, "status": PENDING, "error": None, "result": None}
+            self._jobs[job_id] = {
+                "job_id": job_id,
+                "status": PENDING,
+                "error": None,
+                "result": None,
+            }
         return job_id
 
-    def set_status(self, job_id: str, status: str, error: str | None = None) -> None:
+    def set_status(
+        self, job_id: str, status: str, error: str | None = None
+    ) -> None:
         with self._lock:
-            if job_id not in self._jobs: return
+            if job_id not in self._jobs:
+                return
             self._jobs[job_id]["status"] = status
-            if error is not None: self._jobs[job_id]["error"] = error
+            if error is not None:
+                self._jobs[job_id]["error"] = error
 
     def set_result(self, job_id: str, result: dict[str, Any]) -> None:
         with self._lock:
-            if job_id not in self._jobs: return
+            if job_id not in self._jobs:
+                return
             self._jobs[job_id]["status"] = DONE
             self._jobs[job_id]["result"] = result
 
@@ -138,7 +163,11 @@ class InMemoryJobStore(JobStore):
 
 def _make_store() -> JobStore:
     if settings.use_redis:
-        return RedisJobStore(host=settings.redis_host, port=settings.redis_port, ttl=settings.job_ttl_seconds)
+        return RedisJobStore(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            ttl=settings.job_ttl_seconds,
+        )
     return InMemoryJobStore()
 
 

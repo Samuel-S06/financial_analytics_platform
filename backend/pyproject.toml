@@ -3,9 +3,9 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-# Reasonable defaults: pycodestyle, pyflakes, isort, bugbear
 select = ["E", "F", "I", "B", "UP"]
-ignore = []
+# B008: FastAPI uses File(), Depends() etc. as argument defaults by design
+ignore = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

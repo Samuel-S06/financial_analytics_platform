@@ -29,7 +29,11 @@ async def lifespan(app: FastAPI):
     log.info("backend shutting down")
 
 
-app = FastAPI(title="Financial Analytics Platform - Backend", version="0.2.0", lifespan=lifespan)
+app = FastAPI(
+    title="Financial Analytics Platform - Backend",
+    version="0.2.0",
+    lifespan=lifespan,
+)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -53,17 +57,31 @@ async def hello() -> HelloResponse:
 
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+ALLOWED_CONTENT_TYPES = (
+    "text/csv",
+    "application/vnd.ms-excel",
+    "application/octet-stream",
+)
 
 
 @app.post("/upload", response_model=JobSubmitResponse, status_code=202)
-async def upload(background_tasks: BackgroundTasks, file: UploadFile = File(...)) -> JobSubmitResponse:
-    if file.content_type not in ("text/csv", "application/vnd.ms-excel", "application/octet-stream"):
+async def upload(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+) -> JobSubmitResponse:
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
         if not (file.filename and file.filename.lower().endswith(".csv")):
-            raise HTTPException(status_code=400, detail=f"Expected a CSV, got {file.content_type}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Expected a CSV, got {file.content_type}",
+            )
 
     content = await file.read()
     if len(content) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail=f"File too large; max is {MAX_UPLOAD_BYTES}")
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large; max is {MAX_UPLOAD_BYTES}",
+        )
 
     job_id = store.create()
     background_tasks.add_task(run_upload_job, job_id, content)
@@ -71,18 +89,33 @@ async def upload(background_tasks: BackgroundTasks, file: UploadFile = File(...)
 
 
 @app.post("/simulate", response_model=JobSubmitResponse, status_code=202)
-async def simulate(req: SimulationRequest, background_tasks: BackgroundTasks) -> JobSubmitResponse:
+async def simulate(
+    req: SimulationRequest,
+    background_tasks: BackgroundTasks,
+) -> JobSubmitResponse:
     parent = store.get(req.analysis_job_id)
     if parent is None:
-        raise HTTPException(status_code=404, detail=f"Analysis job {req.analysis_job_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Analysis job {req.analysis_job_id} not found",
+        )
     if parent["status"] != "done":
-        raise HTTPException(status_code=409,
-            detail=f"Analysis job {req.analysis_job_id} is not complete (status: {parent['status']}).")
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Analysis job {req.analysis_job_id} is not complete "
+                f"(status: {parent['status']})."
+            ),
+        )
 
     job_id = store.create()
     background_tasks.add_task(
-        run_simulation_job, job_id, req.analysis_job_id,
-        req.goal_amount, req.months, req.cut_categories,
+        run_simulation_job,
+        job_id,
+        req.analysis_job_id,
+        req.goal_amount,
+        req.months,
+        req.cut_categories,
     )
     return JobSubmitResponse(job_id=job_id, status="pending")
 

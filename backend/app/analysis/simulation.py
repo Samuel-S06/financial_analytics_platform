@@ -30,7 +30,10 @@ def simulate(df: pd.DataFrame, req: SimulationRequest) -> dict:
             "feasible": False,
             "required_monthly_savings": req.goal_amount / req.months,
             "cuts": [],
-            "warning": "None of the requested cut categories appear in the transaction data. Check the category names match.",
+                        "warning": (
+                "None of the requested cut categories appear in the "
+                "transaction data. Check the category names match."
+            ),
         }
 
     required_monthly = req.goal_amount / req.months
