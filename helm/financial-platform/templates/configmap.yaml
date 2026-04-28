@@ -11,5 +11,5 @@ data:
   # but the short form works within the same namespace.
   REDIS_HOST: "redis"
   REDIS_PORT: "{{ .Values.redis.port }}"
-  USE_REDIS: "false"  # flip to "true" once real backend code is wired in
+  USE_REDIS: "true"  # flip to "true" once real backend code is wired in
   SERVICE_NAME: "financial-platform-backend"

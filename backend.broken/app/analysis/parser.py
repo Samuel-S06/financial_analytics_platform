@@ -1,4 +1,11 @@
-"""CSV transaction parser."""
+"""
+CSV transaction parser.
+
+Validates uploaded CSV files and converts them into a normalized pandas
+DataFrame. Defensive about bad input.
+
+Raises ParseError on failure with a human-readable message.
+"""
 
 import io
 from datetime import datetime
@@ -51,7 +58,10 @@ def parse_csv(content: bytes) -> pd.DataFrame:
     dropped = before - len(df)
 
     if df.empty:
-        raise ParseError(f"No valid rows after cleaning ({before} rows had bad data).")
+        raise ParseError(
+            f"No valid rows after cleaning ({before} rows had bad dates, "
+            "amounts, or categories)."
+        )
 
     df.attrs["rows_kept"] = len(df)
     df.attrs["rows_dropped"] = dropped

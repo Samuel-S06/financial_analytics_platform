@@ -1,4 +1,14 @@
-"""FastAPI application entry point."""
+"""
+FastAPI application entry point.
+
+Endpoints:
+  - GET /health          - liveness probe
+  - GET /ready           - readiness probe (also pings Redis)
+  - GET /hello           - load-balancing demo
+  - POST /upload         - submit a CSV; returns a job_id
+  - POST /simulate       - submit simulation params; returns a job_id
+  - GET  /job/{job_id}   - poll job status and result
+"""
 
 import logging
 import socket
@@ -29,7 +39,11 @@ async def lifespan(app: FastAPI):
     log.info("backend shutting down")
 
 
-app = FastAPI(title="Financial Analytics Platform - Backend", version="0.2.0", lifespan=lifespan)
+app = FastAPI(
+    title="Financial Analytics Platform - Backend",
+    version="0.2.0",
+    lifespan=lifespan,
+)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -46,9 +60,10 @@ async def ready() -> HealthResponse:
 
 @app.get("/hello", response_model=HelloResponse)
 async def hello() -> HelloResponse:
+    hostname = socket.gethostname()
     return HelloResponse(
         message="Hello from the financial-platform backend!",
-        pod_hostname=socket.gethostname(),
+        pod_hostname=hostname,
     )
 
 
@@ -56,14 +71,23 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
 @app.post("/upload", response_model=JobSubmitResponse, status_code=202)
-async def upload(background_tasks: BackgroundTasks, file: UploadFile = File(...)) -> JobSubmitResponse:
+async def upload(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+) -> JobSubmitResponse:
     if file.content_type not in ("text/csv", "application/vnd.ms-excel", "application/octet-stream"):
         if not (file.filename and file.filename.lower().endswith(".csv")):
-            raise HTTPException(status_code=400, detail=f"Expected a CSV, got {file.content_type}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Expected a CSV file, got content-type {file.content_type}",
+            )
 
     content = await file.read()
     if len(content) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail=f"File too large; max is {MAX_UPLOAD_BYTES}")
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(content)} bytes); max is {MAX_UPLOAD_BYTES}",
+        )
 
     job_id = store.create()
     background_tasks.add_task(run_upload_job, job_id, content)
@@ -71,18 +95,31 @@ async def upload(background_tasks: BackgroundTasks, file: UploadFile = File(...)
 
 
 @app.post("/simulate", response_model=JobSubmitResponse, status_code=202)
-async def simulate(req: SimulationRequest, background_tasks: BackgroundTasks) -> JobSubmitResponse:
+async def simulate(
+    req: SimulationRequest,
+    background_tasks: BackgroundTasks,
+) -> JobSubmitResponse:
     parent = store.get(req.analysis_job_id)
     if parent is None:
-        raise HTTPException(status_code=404, detail=f"Analysis job {req.analysis_job_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Analysis job {req.analysis_job_id} not found",
+        )
     if parent["status"] != "done":
-        raise HTTPException(status_code=409,
-            detail=f"Analysis job {req.analysis_job_id} is not complete (status: {parent['status']}).")
+        raise HTTPException(
+            status_code=409,
+            detail=f"Analysis job {req.analysis_job_id} is not complete "
+                   f"(status: {parent['status']}). Wait for it to finish.",
+        )
 
     job_id = store.create()
     background_tasks.add_task(
-        run_simulation_job, job_id, req.analysis_job_id,
-        req.goal_amount, req.months, req.cut_categories,
+        run_simulation_job,
+        job_id,
+        req.analysis_job_id,
+        req.goal_amount,
+        req.months,
+        req.cut_categories,
     )
     return JobSubmitResponse(job_id=job_id, status="pending")
 

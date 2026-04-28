@@ -1,1 +1,1 @@
-"""Tests for the CSV parser - to be filled in when parser is implemented."""
+"""Tests for the simulation module - to be filled in when implemented."""

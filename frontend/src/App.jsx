@@ -1,56 +1,131 @@
-import { useState, useEffect } from 'react'
-import { getHello } from './api'
+import { useState } from 'react'
+import Upload from './components/Upload'
+import JobStatus from './components/JobStatus'
+import ResultsChart from './components/ResultsChart'
+import SimulationForm from './components/SimulationForm'
+import SimulationResults from './components/SimulationResults'
 
-// Spine-first stub: hits /api/hello and shows which backend pod responded.
-// Hitting "Refresh" repeatedly is the demo for k8s service load-balancing -
-// pod_hostname will rotate as the Service distributes requests across replicas.
-//
-// The real components (Upload, SimulationForm, ResultsChart) live under
-// ./components/ and will be wired in once the spine is verified end-to-end.
-function App() {
-  const [response, setResponse] = useState(null)
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(false)
+/**
+ * Top-level state machine for the app:
+ *
+ *   no upload     -> show <Upload />
+ *   upload pending -> show <JobStatus /> for the upload
+ *   upload done    -> show <ResultsChart /> + <SimulationForm />
+ *   sim pending    -> also show <JobStatus /> for the simulation
+ *   sim done       -> also show <SimulationResults />
+ *
+ * Each piece is stateless and gets handlers from here. Keeping all the state
+ * in one place makes the data flow obvious - no prop drilling, no context.
+ */
+export default function App() {
+  // Upload / analysis lifecycle
+  const [uploadJobId, setUploadJobId] = useState(null)
+  const [analysis, setAnalysis] = useState(null)
+  const [analysisError, setAnalysisError] = useState(null)
 
-  const fetchHello = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await getHello()
-      setResponse(data)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+  // Simulation lifecycle
+  const [simJobId, setSimJobId] = useState(null)
+  const [simResult, setSimResult] = useState(null)
+  const [simError, setSimError] = useState(null)
+
+  // "Start over" - resets everything to the empty state.
+  const reset = () => {
+    setUploadJobId(null)
+    setAnalysis(null)
+    setAnalysisError(null)
+    setSimJobId(null)
+    setSimResult(null)
+    setSimError(null)
   }
 
-  useEffect(() => {
-    fetchHello()
-  }, [])
+  // Whenever the user submits a new simulation, clear the previous result so
+  // the polling spinner shows clean.
+  const handleSimulationSubmitted = (jobId) => {
+    setSimResult(null)
+    setSimError(null)
+    setSimJobId(jobId)
+  }
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '4rem auto', padding: '0 1rem' }}>
-      <h1>Financial Analytics Platform</h1>
-      <p style={{ color: '#666' }}>Spine check - this confirms the frontend can reach the backend through the ingress.</p>
+    <div className="app">
+      <header className="header">
+        <h1>Financial Analytics Platform</h1>
+        <p className="subtitle">
+          Upload transactions, see spending breakdowns, and simulate savings goals.
+        </p>
+      </header>
 
-      <button onClick={fetchHello} disabled={loading} style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}>
-        {loading ? 'Loading...' : 'Refresh'}
-      </button>
-
-      {error && (
-        <pre style={{ background: '#fee', padding: '1rem', marginTop: '1rem' }}>
-          Error: {error}
-        </pre>
+      {/* --- Upload flow --- */}
+      {!uploadJobId && (
+        <Upload onJobSubmitted={setUploadJobId} />
       )}
 
-      {response && (
-        <pre style={{ background: '#f4f4f4', padding: '1rem', marginTop: '1rem' }}>
-          {JSON.stringify(response, null, 2)}
-        </pre>
+      {uploadJobId && !analysis && !analysisError && (
+        <JobStatus
+          jobId={uploadJobId}
+          label="Analyzing your transactions"
+          onComplete={setAnalysis}
+          onError={setAnalysisError}
+        />
       )}
+
+      {analysisError && (
+        <>
+          <div className="status-banner error">
+            Analysis failed: {analysisError}
+          </div>
+          <button className="btn secondary" onClick={reset}>Try again</button>
+        </>
+      )}
+
+      {/* --- Analysis results --- */}
+      {analysis && (
+        <>
+          <ResultsChart result={analysis} />
+
+          <SimulationForm
+            analysisJobId={uploadJobId}
+            categories={analysis.by_category.map((c) => c.category)}
+            onJobSubmitted={handleSimulationSubmitted}
+          />
+
+          {/* --- Simulation flow --- */}
+          {simJobId && !simResult && !simError && (
+            <JobStatus
+              jobId={simJobId}
+              label="Running simulation"
+              onComplete={setSimResult}
+              onError={setSimError}
+            />
+          )}
+
+          {simError && (
+            <div className="status-banner error">
+              Simulation failed: {simError}
+            </div>
+          )}
+
+          {simResult && <SimulationResults result={simResult} />}
+
+          <div style={{ marginTop: '1.5rem' }}>
+            <button className="btn secondary" onClick={reset}>
+              Start over with a new file
+            </button>
+          </div>
+        </>
+      )}
+
+      <footer className="footer">
+        Deployed on Kubernetes · FastAPI + React · {' '}
+        <a
+          href="/api/health"
+          target="_blank"
+          rel="noopener"
+          style={{ color: 'var(--accent)' }}
+        >
+          backend health
+        </a>
+      </footer>
     </div>
   )
 }
-
-export default App

@@ -1,13 +1,8 @@
-"""
-Pydantic schemas for request/response payloads.
+"""Pydantic schemas for API."""
 
-Right now we only have a hello-world response. As the real endpoints are added
-(/upload, /simulate, etc.), their request and response shapes will live here so
-that the API surface stays type-checked and self-documenting via FastAPI's
-auto-generated OpenAPI schema.
-"""
+from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class HealthResponse(BaseModel):
@@ -17,4 +12,23 @@ class HealthResponse(BaseModel):
 
 class HelloResponse(BaseModel):
     message: str
-    pod_hostname: str  # useful for demoing load balancing across replicas
+    pod_hostname: str
+
+
+class JobSubmitResponse(BaseModel):
+    job_id: str
+    status: str
+
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    error: str | None = None
+    result: dict[str, Any] | None = None
+
+
+class SimulationRequest(BaseModel):
+    analysis_job_id: str = Field(..., description="ID of the upload job")
+    goal_amount: float = Field(..., gt=0)
+    months: int = Field(..., gt=0, le=120)
+    cut_categories: list[str] = Field(..., min_length=1)
