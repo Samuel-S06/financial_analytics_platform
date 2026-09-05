@@ -5,6 +5,7 @@ import socket
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.job_store import RedisJobStore, store
@@ -34,6 +35,19 @@ app = FastAPI(
     version="0.2.0",
     lifespan=lifespan,
 )
+
+# In production the frontend is served same-origin (nginx proxies /api), so
+# this is a no-op. It matters when the frontend is deployed separately - e.g.
+# a static host talking to the API on another domain - where the browser
+# sends a preflight before every non-GET request.
+if settings.cors_origin_list:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origin_list,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/health", response_model=HealthResponse)

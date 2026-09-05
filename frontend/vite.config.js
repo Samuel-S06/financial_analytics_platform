@@ -9,4 +9,18 @@ export default defineConfig({
   build: {
     outDir: 'dist',
   },
+  server: {
+    port: 5173,
+    // Mirror what nginx does in the container: forward /api/* to the backend
+    // and strip the /api prefix, because FastAPI routes are /health, /upload,
+    // etc. Without this, `npm run dev` has nothing serving /api and every
+    // call 404s. Same-origin in dev means no CORS preflight either.
+    proxy: {
+      '/api': {
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
 })

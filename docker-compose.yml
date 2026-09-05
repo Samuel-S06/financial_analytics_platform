@@ -1,0 +1,48 @@
+# Local development stack.
+#
+# This is the fast iteration loop, NOT the deployment story - Helm/Terraform
+# still own that (see helm/ and terraform/). Compose runs the two pieces that
+# are tedious to set up by hand (Redis + the backend, wired together), and the
+# frontend runs on the host with `npm run dev` so Vite's hot reload works
+# natively. The Vite dev server proxies /api here (see frontend/vite.config.js).
+#
+#   docker compose up -d          # Redis + backend on :8000
+#   cd frontend && npm run dev    # UI on :5173
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    # Same args as the k8s StatefulSet, so local behaviour matches the cluster.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      USE_REDIS: "true"
+      SERVICE_NAME: financial-platform-backend
+      CORS_ORIGINS: "http://localhost:5173"
+    # Mount the source read-only and run uvicorn with --reload, so editing a
+    # .py file restarts the app without a rebuild.
+    volumes:
+      - ./backend/app:/app/app:ro
+    command:
+      ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis-data:
