@@ -1,3 +1,4 @@
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -9,19 +10,65 @@ const FEATURES = [
 ]
 
 /**
- * The signed-out view: what the app does, plus sign-up / sign-in.
+ * Entrance choreography.
  *
- * Structure only at this point - the entrance animation lands on top of this
- * markup, so the element order here is also the order things animate in.
+ * One parent orchestrates the whole page: children inherit the "hidden" and
+ * "shown" names, so each element's own variants decide how it arrives while
+ * the parent decides when. That keeps the timing in one place instead of
+ * scattered delays that drift apart whenever the markup changes.
+ *
+ * Under prefers-reduced-motion every distance and blur collapses to zero and
+ * only opacity is left - the sequence still reads, nothing moves.
  */
+const container = (reduced) => ({
+  hidden: {},
+  shown: {
+    transition: {
+      staggerChildren: reduced ? 0.04 : 0.09,
+      delayChildren: reduced ? 0 : 0.08,
+    },
+  },
+})
+
+const rise = (reduced) => ({
+  hidden: { opacity: 0, y: reduced ? 0 : 18 },
+  shown: {
+    opacity: 1,
+    y: 0,
+    transition: reduced
+      ? { duration: 0.2 }
+      // Springs rather than eases: the arrival settles instead of stopping
+      // dead, which is what makes it read as physical.
+      : { type: 'spring', stiffness: 260, damping: 26, mass: 0.9 },
+  },
+})
+
+const slideIn = (reduced) => ({
+  hidden: { opacity: 0, x: reduced ? 0 : 24 },
+  shown: {
+    opacity: 1,
+    x: 0,
+    transition: reduced
+      ? { duration: 0.2 }
+      : { type: 'spring', stiffness: 220, damping: 28, delay: 0.12 },
+  },
+})
+
 export default function Landing() {
   const { signIn, signUp } = useAuth()
+  const reduced = useReducedMotion()
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
   const [busy, setBusy] = useState(false)
+
+  const switchMode = (next) => {
+    setMode(next)
+    setError(null)
+    setNotice(null)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -61,7 +108,7 @@ export default function Landing() {
           </p>
           <pre className="code-block">
 {`VITE_SUPABASE_URL=https://<project>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon key>`}
+VITE_SUPABASE_ANON_KEY=<publishable key>`}
           </pre>
         </div>
       </div>
@@ -69,43 +116,71 @@ VITE_SUPABASE_ANON_KEY=<anon key>`}
   }
 
   return (
-    <div className="landing">
+    <motion.div
+      className="landing"
+      variants={container(reduced)}
+      initial="hidden"
+      animate="shown"
+    >
+      {/* Two slow-drifting washes behind the hero. Decorative only, so it is
+          hidden from assistive tech, and it holds still under reduced motion. */}
+      <div className="landing-glow" aria-hidden="true">
+        <motion.span
+          className="glow glow-a"
+          animate={reduced ? {} : { x: [0, 28, 0], y: [0, -18, 0] }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.span
+          className="glow glow-b"
+          animate={reduced ? {} : { x: [0, -24, 0], y: [0, 20, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+
       <section className="hero">
-        <h1 className="hero-title">Know where the money went.</h1>
-        <p className="hero-subtitle">
+        <motion.h1 className="hero-title" variants={rise(reduced)}>
+          Know where the money went.
+        </motion.h1>
+        <motion.p className="hero-subtitle" variants={rise(reduced)}>
           Upload a transaction CSV and get a spending breakdown, a month-by-month
           trend, and a savings plan you can actually hit.
-        </p>
+        </motion.p>
       </section>
 
       <div className="landing-grid">
         <ul className="feature-list">
           {FEATURES.map(([title, body]) => (
-            <li className="feature" key={title}>
+            <motion.li className="feature" key={title} variants={rise(reduced)}>
               <h3>{title}</h3>
               <p>{body}</p>
-            </li>
+            </motion.li>
           ))}
         </ul>
 
-        <div className="card auth-card">
+        <motion.div className="card auth-card" variants={slideIn(reduced)}>
           <div className="auth-tabs" role="tablist">
-            <button
-              role="tab"
-              aria-selected={mode === 'signin'}
-              className={`auth-tab ${mode === 'signin' ? 'active' : ''}`}
-              onClick={() => { setMode('signin'); setError(null); setNotice(null) }}
-            >
-              Sign in
-            </button>
-            <button
-              role="tab"
-              aria-selected={mode === 'signup'}
-              className={`auth-tab ${mode === 'signup' ? 'active' : ''}`}
-              onClick={() => { setMode('signup'); setError(null); setNotice(null) }}
-            >
-              Create account
-            </button>
+            {[['signin', 'Sign in'], ['signup', 'Create account']].map(([key, label]) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={mode === key}
+                className={`auth-tab ${mode === key ? 'active' : ''}`}
+                onClick={() => switchMode(key)}
+              >
+                {label}
+                {/* One shared layoutId means the underline travels between
+                    tabs instead of disappearing and reappearing. */}
+                {mode === key && (
+                  <motion.span
+                    className="auth-tab-underline"
+                    layoutId="auth-tab-underline"
+                    transition={reduced
+                      ? { duration: 0 }
+                      : { type: 'spring', stiffness: 380, damping: 32 }}
+                  />
+                )}
+              </button>
+            ))}
           </div>
 
           <form onSubmit={handleSubmit}>
@@ -133,17 +208,37 @@ VITE_SUPABASE_ANON_KEY=<anon key>`}
               />
             </div>
 
-            {error && <div className="status-banner error">{error}</div>}
-            {notice && <div className="status-banner info">{notice}</div>}
+            {/* Messages animate their own height so the card grows into the
+                space rather than snapping and shifting the button underfoot. */}
+            <AnimatePresence initial={false}>
+              {(error || notice) && (
+                <motion.div
+                  key={error ? 'error' : 'notice'}
+                  className={`status-banner ${error ? 'error' : 'info'}`}
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  transition={{ duration: reduced ? 0 : 0.22 }}
+                >
+                  {error || notice}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <button className="btn auth-submit" type="submit" disabled={busy}>
+            <motion.button
+              className="btn auth-submit"
+              type="submit"
+              disabled={busy}
+              whileHover={reduced || busy ? {} : { scale: 1.015 }}
+              whileTap={reduced || busy ? {} : { scale: 0.985 }}
+            >
               {busy
                 ? <><span className="spinner" /> Working...</>
                 : mode === 'signup' ? 'Create account' : 'Sign in'}
-            </button>
+            </motion.button>
           </form>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }
