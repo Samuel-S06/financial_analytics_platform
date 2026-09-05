@@ -317,3 +317,49 @@ body {
   font-size: 0.8rem;
   color: var(--text-muted);
 }
+/* Charts: tooltip + notes.
+   Mark colors live in the chart component (Recharts wants them as props),
+   not here. */
+.chart-tooltip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  box-shadow: var(--shadow-lg);
+  font-size: 0.85rem;
+}
+
+.chart-tooltip-label {
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.chart-tooltip-value {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chart-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 1rem 0 0;
+}
+
+/* Recharts puts a focus ring on the svg wrapper on click; it isn't a control. */
+.recharts-wrapper:focus {
+  outline: none;
+}
+
+.chart-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 160px;
+  margin: 0;
+  padding: 0 1.5rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}

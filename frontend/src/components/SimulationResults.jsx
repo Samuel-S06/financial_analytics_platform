@@ -1,3 +1,5 @@
+import { formatMoney } from '../lib/format'
+
 /**
  * Renders the result of a simulation: a feasibility banner if needed, plus
  * a table of per-category recommendations.
@@ -17,8 +19,9 @@ export default function SimulationResults({ result }) {
 
       {feasible && (
         <div className="status-banner info">
-          Your goal is feasible. Required cuts: <strong>${required_monthly_savings}/month</strong>{' '}
-          (selected categories total ${total_cuttable_monthly}/month).
+          Your goal is feasible. Required cuts:{' '}
+          <strong>{formatMoney(required_monthly_savings)}/month</strong>{' '}
+          (selected categories total {formatMoney(total_cuttable_monthly)}/month).
         </div>
       )}
 
@@ -37,9 +40,9 @@ export default function SimulationResults({ result }) {
             {cuts.map((cut) => (
               <tr key={cut.category}>
                 <td>{cut.category}</td>
-                <td className="numeric">${cut.current_monthly.toFixed(2)}</td>
-                <td className="numeric">${cut.recommended_monthly.toFixed(2)}</td>
-                <td className="numeric">${cut.reduction_amount.toFixed(2)}</td>
+                <td className="numeric">{formatMoney(cut.current_monthly)}</td>
+                <td className="numeric">{formatMoney(cut.recommended_monthly)}</td>
+                <td className="numeric">{formatMoney(cut.reduction_amount)}</td>
                 <td className="numeric">{cut.reduction_percentage.toFixed(1)}%</td>
               </tr>
             ))}
