@@ -1,11 +1,24 @@
 import axios from 'axios'
+import { supabase } from './lib/supabase'
 
-// All backend calls go through /api/* - nginx (in the frontend container)
-// proxies these to the backend service. The frontend never needs to know
-// the backend URL; it just talks to the same origin it was served from.
+// All backend calls go through /api/* - nginx (in the frontend container) or
+// the Vite dev proxy forwards these to the backend. VITE_API_URL overrides the
+// base for deployments where the frontend and API live on different hosts.
 const client = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 15000,
+})
+
+// Attach the Supabase access token to every request. Reading the session per
+// request (rather than caching the token) means a token refreshed in the
+// background is picked up automatically.
+client.interceptors.request.use(async (config) => {
+  if (supabase) {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (token) config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
 })
 
 // --- Endpoints ---
@@ -23,6 +36,10 @@ export const getJob = (jobId) =>
 
 export const submitSimulation = (params) =>
   client.post('/simulate', params).then(r => r.data)
+
+/** The signed-in user's own uploads, newest first. */
+export const listJobs = () =>
+  client.get('/jobs').then(r => r.data)
 
 // Helper: poll a job until it's done or failed. Returns the final job record.
 // Polls every `intervalMs` until the status is terminal.

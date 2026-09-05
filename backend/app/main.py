@@ -4,11 +4,15 @@ import logging
 import socket
 from contextlib import asynccontextmanager
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+# Imported as a module, not `from ... import store`: binding the instance at
+# import time would freeze whichever store existed then, and swapping it
+# later (as the tests do) would silently have no effect.
+from app import job_store
+from app.auth import get_current_user
 from app.config import settings
-from app.job_store import RedisJobStore, store
 from app.jobs import run_simulation_job, run_upload_job
 from app.logging_config import configure_logging
 from app.models import (
@@ -16,6 +20,7 @@ from app.models import (
     HelloResponse,
     JobStatusResponse,
     JobSubmitResponse,
+    JobSummary,
     SimulationRequest,
 )
 
@@ -26,6 +31,13 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("backend starting", extra={"service": settings.service_name})
+    if not settings.auth_enabled:
+        # Every request is attributed to one shared identity in this mode.
+        # Fine on a laptop, never in front of real users.
+        log.warning(
+            "AUTH IS DISABLED - all requests share one user id",
+            extra={"dev_user_id": settings.dev_user_id},
+        )
     yield
     log.info("backend shutting down")
 
@@ -57,7 +69,7 @@ async def health() -> HealthResponse:
 
 @app.get("/ready", response_model=HealthResponse)
 async def ready() -> HealthResponse:
-    if isinstance(store, RedisJobStore) and not store.ping():
+    if isinstance(job_store.store, job_store.RedisJobStore) and not job_store.store.ping():
         raise HTTPException(status_code=503, detail="Redis unreachable")
     return HealthResponse(status="ready", service=settings.service_name)
 
@@ -82,6 +94,7 @@ ALLOWED_CONTENT_TYPES = (
 async def upload(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user),
 ) -> JobSubmitResponse:
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         if not (file.filename and file.filename.lower().endswith(".csv")):
@@ -97,7 +110,7 @@ async def upload(
             detail=f"File too large; max is {MAX_UPLOAD_BYTES}",
         )
 
-    job_id = store.create()
+    job_id = job_store.store.create(user_id)
     background_tasks.add_task(run_upload_job, job_id, content)
     return JobSubmitResponse(job_id=job_id, status="pending")
 
@@ -106,9 +119,12 @@ async def upload(
 async def simulate(
     req: SimulationRequest,
     background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_current_user),
 ) -> JobSubmitResponse:
-    parent = store.get(req.analysis_job_id)
-    if parent is None:
+    parent = job_store.store.get(req.analysis_job_id)
+    # Someone else's analysis is reported as missing, not forbidden - a 403
+    # would confirm the id exists.
+    if parent is None or parent.get("user_id") != user_id:
         raise HTTPException(
             status_code=404,
             detail=f"Analysis job {req.analysis_job_id} not found",
@@ -122,7 +138,7 @@ async def simulate(
             ),
         )
 
-    job_id = store.create()
+    job_id = job_store.store.create(user_id)
     background_tasks.add_task(
         run_simulation_job,
         job_id,
@@ -135,8 +151,29 @@ async def simulate(
 
 
 @app.get("/job/{job_id}", response_model=JobStatusResponse)
-async def get_job(job_id: str) -> JobStatusResponse:
-    record = store.get(job_id)
-    if record is None:
+async def get_job(
+    job_id: str,
+    user_id: str = Depends(get_current_user),
+) -> JobStatusResponse:
+    record = job_store.store.get(job_id)
+    if record is None or record.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
     return JobStatusResponse(**record)
+
+
+@app.get("/jobs", response_model=list[JobSummary])
+async def list_jobs(user_id: str = Depends(get_current_user)) -> list[JobSummary]:
+    """The caller's own uploads, newest first."""
+    records = job_store.store.list_jobs(user_id)
+    return [
+        JobSummary(
+            job_id=r["job_id"],
+            status=r["status"],
+            created_at=r.get("created_at"),
+            total_spend=(r.get("result") or {}).get("summary", {}).get("total_spend"),
+        )
+        for r in records
+        # Simulation jobs share the store but aren't uploads; only analysis
+        # results carry a summary.
+        if r.get("result") is None or "summary" in (r.get("result") or {})
+    ]

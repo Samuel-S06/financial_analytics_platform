@@ -16,9 +16,32 @@ class Settings(BaseSettings):
     # once the frontend is hosted separately from the backend.
     cors_origins: str = "http://localhost:5173"
 
+    # --- Auth ---------------------------------------------------------------
+    # Defaults to ON so a misconfigured deploy fails closed rather than serving
+    # everyone's data. Turning it off is opt-in and logged loudly - see
+    # docker-compose.yml, which sets it for local work before Supabase keys
+    # exist.
+    auth_enabled: bool = True
+    # e.g. https://abcdefgh.supabase.co - used to build the JWKS URL and to
+    # check the issuer claim.
+    supabase_url: str = ""
+    # Only for projects still on legacy HS256 symmetric signing. Newer Supabase
+    # projects sign with ES256/RS256 and publish a JWKS, which needs no secret.
+    supabase_jwt_secret: str = ""
+    # Identity attributed to requests when auth_enabled is false.
+    dev_user_id: str = "dev-user"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def jwks_url(self) -> str:
+        return f"{self.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+
+    @property
+    def jwt_issuer(self) -> str:
+        return f"{self.supabase_url.rstrip('/')}/auth/v1"
 
 
 settings = Settings()

@@ -27,6 +27,15 @@ class JobStatusResponse(BaseModel):
     result: dict[str, Any] | None = None
 
 
+class JobSummary(BaseModel):
+    """One row in a user's upload history - deliberately not the full result."""
+
+    job_id: str
+    status: str
+    created_at: float | None = None
+    total_spend: float | None = None
+
+
 class SimulationRequest(BaseModel):
     analysis_job_id: str = Field(..., description="ID of the upload job")
     goal_amount: float = Field(..., gt=0)
