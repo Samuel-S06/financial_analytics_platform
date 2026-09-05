@@ -54,3 +54,7 @@ export const pollJob = async (jobId, { intervalMs = 1000, maxAttempts = 60 } = {
   }
   throw new Error('Job polling timed out')
 }
+
+/** Live exchange rates for converting displayed totals. */
+export const getRates = (base = 'USD') =>
+  client.get('/rates', { params: { base } }).then(r => r.data)

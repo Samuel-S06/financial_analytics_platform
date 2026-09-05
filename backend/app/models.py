@@ -36,6 +36,16 @@ class JobSummary(BaseModel):
     total_spend: float | None = None
 
 
+class RatesResponse(BaseModel):
+    base: str
+    date: str
+    rates: dict[str, float]
+    cached: bool
+    # True when the upstream API was unreachable and a previous result is
+    # being served instead.
+    stale: bool
+
+
 class SimulationRequest(BaseModel):
     analysis_job_id: str = Field(..., description="ID of the upload job")
     goal_amount: float = Field(..., gt=0)

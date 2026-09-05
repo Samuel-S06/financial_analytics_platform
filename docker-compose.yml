@@ -34,13 +34,11 @@ services:
       USE_REDIS: "true"
       SERVICE_NAME: financial-platform-backend
       CORS_ORIGINS: "http://localhost:5173"
-      # Local only. Every request is attributed to one shared id, so the app
-      # is usable before Supabase keys exist. The backend logs a warning at
-      # startup while this is set. Set the two SUPABASE_* vars below and drop
-      # this line to exercise real tokens.
-      AUTH_ENABLED: "false"
-      # SUPABASE_URL: "https://<project>.supabase.co"
-      # SUPABASE_JWT_SECRET: ""   # only for legacy HS256 projects
+      AUTH_ENABLED: "true"
+      # The project signs with ES256 and publishes a JWKS, so the URL is all
+      # the backend needs - there is no shared secret to configure. Set
+      # SUPABASE_JWT_SECRET only for legacy HS256 projects.
+      SUPABASE_URL: "https://cvuugtmmxuwagtpjtsbu.supabase.co"
     # Mount the source read-only and run uvicorn with --reload, so editing a
     # .py file restarts the app without a rebuild.
     volumes:

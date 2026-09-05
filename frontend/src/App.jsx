@@ -1,6 +1,7 @@
 import Dashboard from './components/Dashboard'
 import Landing from './components/Landing'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { CurrencyProvider } from './context/CurrencyContext'
 
 /**
  * The gate: signed out sees the landing page, signed in sees the dashboard.
@@ -21,7 +22,19 @@ function Gate() {
     )
   }
 
-  return <div className="app">{session ? <Dashboard /> : <Landing />}</div>
+  // The provider sits inside the gate: /rates requires a token, so there is
+  // nothing to fetch until someone is signed in.
+  return (
+    <div className="app">
+      {session ? (
+        <CurrencyProvider>
+          <Dashboard />
+        </CurrencyProvider>
+      ) : (
+        <Landing />
+      )}
+    </div>
+  )
 }
 
 export default function App() {

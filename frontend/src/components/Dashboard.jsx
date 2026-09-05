@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listJobs } from '../api'
 import { useAuth } from '../context/AuthContext'
-import { formatMoney } from '../lib/format'
+import { useCurrency } from '../context/CurrencyContext'
+import CurrencyPicker from './CurrencyPicker'
 import JobStatus from './JobStatus'
 import ResultsChart from './ResultsChart'
 import SimulationForm from './SimulationForm'
@@ -22,6 +23,7 @@ import Upload from './Upload'
  */
 export default function Dashboard() {
   const { user, signOut } = useAuth()
+  const { money } = useCurrency()
 
   const [uploadJobId, setUploadJobId] = useState(null)
   const [analysis, setAnalysis] = useState(null)
@@ -67,6 +69,7 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="account">
+          <CurrencyPicker />
           <span className="account-email">{user?.email}</span>
           <button className="btn secondary" onClick={signOut}>Sign out</button>
         </div>
@@ -138,7 +141,7 @@ export default function Dashboard() {
                     : '—'}
                 </span>
                 <span className="history-total">
-                  {job.total_spend != null ? formatMoney(job.total_spend) : job.status}
+                  {job.total_spend != null ? money(job.total_spend) : job.status}
                 </span>
               </li>
             ))}

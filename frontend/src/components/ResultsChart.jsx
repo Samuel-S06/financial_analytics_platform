@@ -10,7 +10,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { formatMoney, formatMoneyCompact, formatMonth } from '../lib/format'
+import { useCurrency } from '../context/CurrencyContext'
+import { formatMonth } from '../lib/format'
 
 // Chart-only tokens. --accent (#2d9596) is tuned for buttons and reads slightly
 // gray as a large data fill, so marks use the same teal stepped up in chroma.
@@ -25,20 +26,22 @@ const SURFACE = '#ffffff'
 // already says what is being measured, and a one-swatch legend box would just
 // restate it.
 
-function ChartTooltip({ active, payload, label, labelFormatter }) {
+function ChartTooltip({ active, payload, label, labelFormatter, money }) {
   if (!active || !payload?.length) return null
   return (
     <div className="chart-tooltip">
       <div className="chart-tooltip-label">
         {labelFormatter ? labelFormatter(label) : label}
       </div>
-      <div className="chart-tooltip-value">{formatMoney(payload[0].value)}</div>
+      <div className="chart-tooltip-value">{money(payload[0].value)}</div>
     </div>
   )
 }
 
 export default function ResultsChart({ result }) {
   const { summary, by_category, monthly_spending, rows_dropped } = result
+  // Amounts are stored in USD; conversion happens here at render time only.
+  const { money, moneyCompact } = useCurrency()
 
   // Horizontal bars: category names are words, and laying them along the y-axis
   // keeps them readable without rotating the labels.
@@ -56,12 +59,12 @@ export default function ResultsChart({ result }) {
         <div className="stat-grid">
           <div className="stat">
             <div className="stat-label">Total spend</div>
-            <div className="stat-value">{formatMoney(summary.total_spend)}</div>
+            <div className="stat-value">{money(summary.total_spend)}</div>
           </div>
           <div className="stat">
             <div className="stat-label">Average / month</div>
             <div className="stat-value">
-              {formatMoney(summary.average_monthly_spend)}
+              {money(summary.average_monthly_spend)}
             </div>
           </div>
           <div className="stat">
@@ -98,7 +101,7 @@ export default function ResultsChart({ result }) {
               <CartesianGrid horizontal={false} stroke={GRID} />
               <XAxis
                 type="number"
-                tickFormatter={(v) => formatMoneyCompact(v)}
+                tickFormatter={moneyCompact}
                 stroke={GRID}
                 tick={{ fill: AXIS_TEXT, fontSize: 12 }}
               />
@@ -110,7 +113,7 @@ export default function ResultsChart({ result }) {
                 tick={{ fill: AXIS_TEXT, fontSize: 12 }}
               />
               <Tooltip
-                content={<ChartTooltip />}
+                content={<ChartTooltip money={money} />}
                 cursor={{ fill: 'rgba(13, 148, 136, 0.06)' }}
               />
               <Bar
@@ -130,7 +133,7 @@ export default function ResultsChart({ result }) {
                 <LabelList
                   dataKey="total"
                   position="right"
-                  formatter={(v) => formatMoney(v)}
+                  formatter={money}
                   style={{ fill: AXIS_TEXT, fontSize: 12 }}
                 />
               </Bar>
@@ -163,12 +166,12 @@ export default function ResultsChart({ result }) {
                 tick={{ fill: AXIS_TEXT, fontSize: 12 }}
               />
               <YAxis
-                tickFormatter={(v) => formatMoneyCompact(v)}
+                tickFormatter={moneyCompact}
                 stroke={GRID}
                 tick={{ fill: AXIS_TEXT, fontSize: 12 }}
               />
               <Tooltip
-                content={<ChartTooltip labelFormatter={formatMonth} />}
+                content={<ChartTooltip labelFormatter={formatMonth} money={money} />}
                 cursor={{ stroke: MARK, strokeWidth: 1 }}
               />
               <Area

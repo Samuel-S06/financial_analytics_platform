@@ -545,3 +545,41 @@ body {
 .history-total {
   font-weight: 600;
 }
+
+/* --- Currency picker ------------------------------------------------------ */
+
+.currency-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.currency-picker select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.currency-picker select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.currency-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

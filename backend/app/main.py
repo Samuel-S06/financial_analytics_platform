@@ -4,6 +4,7 @@ import logging
 import socket
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # import time would freeze whichever store existed then, and swapping it
 # later (as the tests do) would silently have no effect.
 from app import job_store
+from app import rates as rates_service
 from app.auth import get_current_user
 from app.config import settings
 from app.jobs import run_simulation_job, run_upload_job
@@ -21,6 +23,7 @@ from app.models import (
     JobStatusResponse,
     JobSubmitResponse,
     JobSummary,
+    RatesResponse,
     SimulationRequest,
 )
 
@@ -177,3 +180,19 @@ async def list_jobs(user_id: str = Depends(get_current_user)) -> list[JobSummary
         # results carry a summary.
         if r.get("result") is None or "summary" in (r.get("result") or {})
     ]
+
+
+@app.get("/rates", response_model=RatesResponse)
+async def rates(
+    base: str = "USD",
+    _user_id: str = Depends(get_current_user),
+) -> RatesResponse:
+    """Live exchange rates, so totals can be shown in a second currency."""
+    try:
+        return RatesResponse(**rates_service.get_rates(base.upper()))
+    except httpx.HTTPError as exc:
+        log.warning("rate lookup failed", extra={"error": type(exc).__name__})
+        raise HTTPException(
+            status_code=503,
+            detail="Exchange rates are unavailable right now.",
+        ) from exc
