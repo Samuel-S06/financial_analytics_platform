@@ -70,6 +70,17 @@ export default function Landing() {
     setNotice(null)
   }
 
+  // This project keeps Supabase's "Confirm email" on, so a new account has no
+  // session until it's confirmed - by the emailed link, or by an admin in the
+  // Supabase dashboard under Authentication -> Users. Both paths end at the
+  // sign-in form, so say that plainly instead of leaving a dead end.
+  const CONFIRM_REQUIRED =
+    'Account created. Confirm it from the email we sent (or have an admin ' +
+    'confirm it in Supabase), then sign in below.'
+  const NOT_CONFIRMED =
+    'This account still needs confirming. Use the link in your signup email, ' +
+    'or have an admin confirm it in Supabase, then try again.'
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
@@ -83,11 +94,19 @@ export default function Landing() {
       const action = mode === 'signup' ? signUp : signIn
       const { data, error: authError } = await action(email, password)
       if (authError) {
-        setError(authError.message)
+        // Supabase reports this as a plain "Email not confirmed", which tells
+        // the user nothing about what to do next.
+        const unconfirmed =
+          authError.code === 'email_not_confirmed' ||
+          /not confirmed/i.test(authError.message)
+        setError(unconfirmed ? NOT_CONFIRMED : authError.message)
       } else if (mode === 'signup' && !data.session) {
-        // Happens when the project has email confirmation switched on: the
-        // user exists but has no session until they click the link.
-        setNotice('Check your email to confirm your account, then sign in.')
+        // Confirmation is required: the user exists but has no session yet.
+        // Move them to the sign-in tab with the email still filled in, so
+        // signing in after confirming is one click and one password.
+        setMode('signin')
+        setPassword('')
+        setNotice(CONFIRM_REQUIRED)
       }
       // On success there's nothing to do - the auth listener swaps the view.
     } catch (err) {
