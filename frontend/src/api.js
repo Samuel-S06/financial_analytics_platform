@@ -21,6 +21,21 @@ client.interceptors.request.use(async (config) => {
   return config
 })
 
+// A 200 is not proof of an API response. When VITE_API_URL is unset or wrong,
+// requests land on the static host, which answers /api/* with index.html and
+// a 200 - so callers would parse a web page as data. Reject that here rather
+// than letting an HTML string reach code expecting an object.
+client.interceptors.response.use((response) => {
+  const type = response.headers?.['content-type'] || ''
+  if (!type.includes('application/json')) {
+    throw new Error(
+      `Expected JSON from ${response.config?.url} but got "${type || 'no content-type'}". ` +
+      'The API URL is probably unset or pointing at the wrong host.',
+    )
+  }
+  return response
+})
+
 // --- Endpoints ---
 
 export const uploadCsv = (file) => {

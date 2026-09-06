@@ -43,7 +43,9 @@ export default function Dashboard() {
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const refreshHistory = useCallback(() => {
     listJobs()
-      .then(setHistory)
+      // Same reasoning as the rate table: a non-array here would make
+      // history.map throw and blank the page.
+      .then((jobs) => setHistory(Array.isArray(jobs) ? jobs : []))
       .catch(() => setHistory([]))
       .finally(() => setHistoryLoaded(true))
   }, [])

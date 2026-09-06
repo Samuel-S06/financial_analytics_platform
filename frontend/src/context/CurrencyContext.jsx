@@ -39,7 +39,13 @@ export function CurrencyProvider({ children }) {
     getRates(BASE)
       .then((data) => {
         if (cancelled) return
-        setRates(data.rates)
+        // Never replace the rate table with something that isn't one. A
+        // malformed response used to land here as undefined and take the
+        // whole app down on the next read.
+        if (!data?.rates || typeof data.rates !== 'object') {
+          throw new Error('Rate response did not contain a rates object')
+        }
+        setRates({ [BASE]: 1, ...data.rates })
         setStale(data.stale)
         setAsOf(data.date)
         setError(null)
@@ -63,13 +69,16 @@ export function CurrencyProvider({ children }) {
 
   // Fall back to the base if rates haven't loaded or lack the selection, so a
   // partial response can never render a wrong number.
-  const rate = rates[currency] ?? 1
-  const active = rates[currency] ? currency : BASE
+  // Belt and braces: even if something upstream sets this badly, reading a
+  // currency out of it must not be able to crash the page.
+  const safeRates = rates && typeof rates === 'object' ? rates : { [BASE]: 1 }
+  const rate = safeRates[currency] ?? 1
+  const active = safeRates[currency] ? currency : BASE
 
   const value = useMemo(() => ({
     currency: active,
     setCurrency,
-    currencies: Object.keys(rates).sort(),
+    currencies: Object.keys(safeRates).sort(),
     rate,
     asOf,
     stale,
@@ -77,7 +86,7 @@ export function CurrencyProvider({ children }) {
     isConverted: active !== BASE,
     money: (amount) => formatMoney(amount, active, rate),
     moneyCompact: (amount) => formatMoneyCompact(amount, active, rate),
-  }), [active, setCurrency, rates, rate, asOf, stale, error])
+  }), [active, setCurrency, safeRates, rate, asOf, stale, error])
 
   return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>
 }
