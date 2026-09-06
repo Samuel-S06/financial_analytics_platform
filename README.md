@@ -118,52 +118,112 @@ most:
 
 ## Deploying it publicly
 
-Minikube can't give you a public URL, so the hosted split is:
+Minikube can't hand out a public URL, so the hosted split is:
 
 - **Backend + Redis → Render.** It builds `backend/Dockerfile` directly, so the
   container in production is the one that runs locally.
-- **Frontend → Vercel.** It's a static bundle; Vercel puts it on a CDN free.
+- **Frontend → Vercel.** A static bundle on a CDN, free.
 - **Auth → Supabase**, already hosted.
 
-### 1. Backend on Render
+### Environment variables
 
-Push to GitHub, then **Render → New → Blueprint** and point it at the repo.
-`render.yaml` defines the web service and Redis. You'll be asked for two values:
+**Render — backend.** Everything below maps to a field on `Settings` in
+`backend/app/config.py`; pydantic-settings reads each one from the uppercased
+field name.
 
-- `SUPABASE_URL` — your project URL
-- `CORS_ORIGINS` — your Vercel URL (fill in after step 2, then redeploy)
+| Variable | Required | Value / where it comes from | Entry |
+|---|---|---|---|
+| `SUPABASE_URL` | **Yes** | Supabase → Project Settings → API → **Project URL** | **Manual** (`sync: false`) |
+| `CORS_ORIGINS` | **Yes** | Your Vercel origin, e.g. `https://spendline.vercel.app`. Comma-separated for more than one | **Manual** (`sync: false`) |
+| `AUTH_ENABLED` | **Yes** | `true` | Auto — set in `render.yaml` |
+| `USE_REDIS` | **Yes** | `true` | Auto — set in `render.yaml` |
+| `REDIS_HOST` | **Yes** | The Redis instance's host | Auto — `fromService` |
+| `REDIS_PORT` | **Yes** | The Redis instance's port | Auto — `fromService` |
+| `SUPABASE_JWT_SECRET` | **No — leave unset** | Only for legacy HS256 projects. This project's Supabase signs **ES256** and publishes a JWKS, which needs no secret. Setting it forces the wrong verification path and breaks every login | — |
+| `SERVICE_NAME` | No | Defaults to `spendline-backend` | — |
+| `JOB_TTL_SECONDS` | No | Defaults to `86400` (24h) | — |
+| `DEV_USER_ID` | No | Only read when `AUTH_ENABLED=false` | — |
 
-### 2. Frontend on Vercel
+So on Render you type in **two values**: `SUPABASE_URL` and `CORS_ORIGINS`.
 
-**Vercel → Add New → Project**, import the repo, and set the **Root Directory**
-to `frontend`. `frontend/vercel.json` supplies the rest (Vite build, `npm ci`,
-and the SPA rewrite so deep links don't 404).
+**Vercel — frontend.** These are every `import.meta.env` reference in `src/`;
+there are no others.
 
-Add three environment variables under **Settings → Environment Variables**:
-
-| Variable | Value |
+| Variable | Value / where it comes from |
 |---|---|
-| `VITE_SUPABASE_URL` | your Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | the publishable key |
-| `VITE_API_URL` | your Render URL, e.g. `https://spendline-api.onrender.com` |
+| `VITE_SUPABASE_URL` | Supabase → Project Settings → API → **Project URL** |
+| `VITE_SUPABASE_ANON_KEY` | Supabase → Project Settings → API → **publishable key** (`sb_publishable_…`). Safe to expose; it ships in the bundle. Never the `service_role` / secret key |
+| `VITE_API_URL` | Your Render URL, e.g. `https://spendline-api.onrender.com` |
 
-`VITE_*` values are baked into the bundle at build time, so changing one needs a
-redeploy, not just a restart.
+`VITE_*` values are baked in at build time, so changing one needs a **redeploy**,
+not a restart.
 
-### 3. Close the loop
+### Build settings
 
-Set `CORS_ORIGINS` on Render to your Vercel origin (e.g.
-`https://your-app.vercel.app`) and redeploy. Without it the browser blocks every
-API call.
+**Render** needs none. `render.yaml` declares `runtime: docker`, so Render builds
+`backend/Dockerfile` with `./backend` as context and runs the image's own `CMD`:
 
-Vercel also gives every deployment its own preview URL on a different subdomain.
-Those are *not* covered by the origin above — add them to `CORS_ORIGINS` as a
-comma-separated list if you want previews to reach the API.
+```
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
-> Render's free tier sleeps after inactivity, so the first request after a quiet
-> spell takes ~30s to wake. Fine for a demo; worth knowing before you present.
+Health checks hit `/health`. Don't set a build or start command in the
+dashboard — a Docker service takes both from the image.
 
----
+**Vercel** reads `frontend/vercel.json`, but set the **Root Directory** to
+`frontend` when importing, or the build runs at the repo root and finds no app.
+If auto-detection misfires, these are the values:
+
+| Setting | Value |
+|---|---|
+| Framework Preset | Vite |
+| Root Directory | `frontend` |
+| Install Command | `npm ci` |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+
+### Deployment order
+
+There's a circular dependency — the frontend needs the backend's URL, and the
+backend needs the frontend's origin for CORS — but it isn't a deadlock, because
+both platforms give predictable URLs (`https://<name>.onrender.com`,
+`https://<project>.vercel.app`). Backend first, then frontend, then one CORS
+touch-up.
+
+1. **Push to GitHub.** Both platforms deploy from git.
+2. **Supabase → Authentication → URL Configuration → Site URL.** Set it to your
+   Vercel URL, and add it under **Redirect URLs**. Confirmation and recovery
+   emails link to the Site URL — leave it at `localhost` and every emailed link
+   in production points at a machine the recipient doesn't have.
+3. **Render → New → Blueprint**, point at the repo. It reads `render.yaml` and
+   creates the web service plus Redis. Enter `SUPABASE_URL`, and
+   `CORS_ORIGINS` set to the Vercel URL you expect in step 5.
+4. **Wait for the first deploy**, then confirm the real Render URL and that
+   `https://<render-url>/health` returns `{"status":"ok",…}`.
+5. **Vercel → Add New → Project**, import the repo, **Root Directory =
+   `frontend`**. Add the three `VITE_*` variables using the real Render URL from
+   step 4. Deploy.
+6. **Confirm the real Vercel URL.** If it differs from what you guessed in step
+   3, update `CORS_ORIGINS` on Render and redeploy the backend.
+7. **Smoke test:** sign up, confirm the account, upload the sample CSV, toggle
+   the currency, sign out.
+
+### Manual dashboard settings not captured in any config file
+
+- **Supabase → Authentication → URL Configuration → Site URL** — step 2 above.
+  The single most common reason a deployed Supabase app "works but nobody can
+  log in".
+- **Supabase → Authentication → Sign In / Providers → Email → Confirm email.**
+  Left on, the built-in mailer allows only a few sends per hour and bounces
+  count against the project, so a handful of sign-ups in one session will start
+  failing with `over_email_send_rate_limit`. Turning it off needs no SMTP.
+  Leaving it on means confirming each account by hand under **Authentication →
+  Users**.
+- **Vercel preview deployments** get their own subdomain per deployment, which
+  the production origin in `CORS_ORIGINS` does not cover. Add them explicitly if
+  previews need to reach the API.
+- **Render's free tier sleeps** after inactivity; the first request afterwards
+  takes ~30s. Worth warming before a demo.
 
 ## Running it on Kubernetes
 
@@ -188,12 +248,40 @@ What's in here:
 - **`.github/workflows/ci.yml`** — ruff, pytest, and both image builds on push.
 - **`Makefile`** — every workflow: `make up`, `deploy`, `test`, `status`, `down`.
 
+## Scope and time
+
+This started as a CIS 1912 final project — a FastAPI/React app on Kubernetes with
+Helm, Terraform and CI. It was then extended for a club technical assessment
+with a **4-hour budget**: Supabase auth with per-user data scoping, a live
+currency API, and a motion pass on the landing page.
+
+**Actual time ran to roughly 5–6 hours, not 4.** Where it went, honestly:
+
+- The starting repo needed work before any feature could land. `ResultsChart`
+  was a stub returning `null`, so the headline feature — the spending charts —
+  did not exist and had to be built. There was also no working local dev loop:
+  the frontend calls `/api/*`, nothing served that path under `npm run dev`, so
+  the only way to run the app was a full Minikube deploy.
+- The landing page was iterated three times. That was scope added during the
+  work, not underestimation of the original plan.
+- Some of it was environment, not code: the Docker VM ran out of disk mid-build
+  because the host disk was full, which cost a rebuild and a restart.
+
+The three requested features came in near their estimates. The overrun is
+mostly pre-existing gaps and added scope, and it seemed more useful to record
+that than to quietly round the number down.
+
 ## Known limitations
 
+- **The signed-in path has not been verified end to end.** Individual pieces
+  are covered — the API's user boundary is tested against real JWTs and real
+  Redis, the charts render against real analysis output, the rate cache is
+  tested — but a full signup → upload → chart → currency toggle → sign-out run
+  has not been completed, because it needs a confirmed Supabase account.
 - **Background jobs aren't durable.** They run in-process via FastAPI
   `BackgroundTasks`, so a pod restart mid-job orphans it. A real queue (Celery,
   RQ, arq) would fix it; it's more machinery than this project needs.
 - **Uploaded data expires after 24h**, by design — job records and parsed
   DataFrames both carry a TTL. There is no long-term transaction store.
 - **Amounts are assumed to be USD.** Currency conversion is presentational; the
-  data is never rewritten.
+  stored data is never rewritten.
