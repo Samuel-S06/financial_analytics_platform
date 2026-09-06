@@ -308,11 +308,11 @@ that than to quietly round the number down.
 
 ## Known limitations
 
-- **The signed-in path has not been verified end to end.** Individual pieces
-  are covered — the API's user boundary is tested against real JWTs and real
-  Redis, the charts render against real analysis output, the rate cache is
-  tested — but a full signup → upload → chart → currency toggle → sign-out run
-  has not been completed, because it needs a confirmed Supabase account.
+- **Accounts must be confirmed before they can sign in.** Supabase's email
+  confirmation is left on, and the built-in mailer allows only a few sends an
+  hour, so a burst of sign-ups will start failing. For a walkthrough with more
+  than a couple of people, confirm accounts under Supabase → Authentication →
+  Users, or turn confirmation off there.
 - **Background jobs aren't durable.** They run in-process via FastAPI
   `BackgroundTasks`, so a pod restart mid-job orphans it. A real queue (Celery,
   RQ, arq) would fix it; it's more machinery than this project needs.
