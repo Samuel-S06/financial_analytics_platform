@@ -18,27 +18,18 @@ authentication, a live external API, and a motion pass on the landing page.
 > Render's free tier sleeps after inactivity, so the first request after a quiet
 > spell takes ~30s to wake. If the page seems to hang on first load, that's why.
 
-## Try it in two minutes
+## How to try it
 
-The repo ships a sample CSV so you don't need a bank export of your own.
-
-1. Open <https://spendline-ots2.vercel.app>
-2. **Create account** — any email and a password of six characters or more
-3. **Confirm the account.** This project keeps Supabase's email confirmation on,
-   so check your inbox for the link. (If you're running it yourself, an admin
-   can confirm the user under Supabase → Authentication → Users instead.)
-4. **Sign in**
-5. Hit **Try it with sample data** under the upload zone — it runs
+1. Open <https://spendline-ots2.vercel.app>, create an account, confirm it using
+   the emailed link, and sign in.
+2. Click **Try it with sample data** under the upload box. This uses
    [`sample-data/sample_transactions.csv`](sample-data/sample_transactions.csv)
-   straight through, no download needed. Dragging the file in works too.
-6. The breakdown appears: **$1,544.84** across four categories over three
-   months, with Groceries the largest at $951.90.
-7. **Switch the currency** in the header — every total, axis label and bar
-   label converts at live ECB rates. The underlying data stays in USD.
-8. **Run a simulation**: goal $600 over 12 months, cutting from Dining and
-   Entertainment. It comes back feasible, with a recommended monthly budget per
-   category.
-9. **Sign out** — the session clears and the landing page returns.
+   from this repo. You can also drag that file in yourself.
+3. Change the currency in the top right.
+4. Run a simulation, then sign out.
+
+The API sleeps when idle on the free plan, so the first action after signing in
+can take about 30 seconds.
 
 ## What it does
 
@@ -71,6 +62,30 @@ pods stateless and horizontally scalable.
 Jobs are indexed under `user:{id}:jobs`, a sorted set scored by creation time.
 Reading or simulating against another user's job returns **404, not 403** — a
 403 would confirm the id exists.
+
+## Features included
+
+Mapped to the assessment's suggested criteria.
+
+**Frontend**
+- Components: upload, charts, simulation, authentication, dashboard, empty state, error state
+- Animations: staggered entrance, sliding tab indicator, scroll-triggered reveals, expanding message banners, all respecting the reduced motion setting
+- Mobile responsiveness: works down to 390px wide, with no sideways scrolling
+
+**Backend**
+- Registration, login and logout through Supabase; the backend verifies tokens and never handles a password
+- API calls: live exchange rates from the Frankfurter API, fetched server-side and cached
+- Data layer: Redis holds job state, parsed transaction data, and a per-user index, so each account only ever sees its own uploads
+- Classes and objects: a job store interface with Redis and in-memory implementations, so tests run without a server
+
+**Full-stack**
+- React frontend against a FastAPI backend, with tokens attached to every request automatically
+- Asynchronous job handling: uploads return straight away and the frontend polls for the result
+
+**Deployment**
+- Live on Vercel and Render, with authentication on Supabase
+- Also deployable to Kubernetes with the Helm chart and Terraform in this repo
+- 38 backend tests and linting run in GitHub Actions on every push
 
 ---
 
@@ -283,28 +298,31 @@ What's in here:
 - **`.github/workflows/ci.yml`** — ruff, pytest, and both image builds on push.
 - **`Makefile`** — every workflow: `make up`, `deploy`, `test`, `status`, `down`.
 
-## Scope and time
+## How this was built
 
-This started as a CIS 1912 final project — a FastAPI/React app on Kubernetes with
-Helm, Terraform and CI. It was then extended for a club technical assessment
-with a **4-hour budget**: Supabase auth with per-user data scoping, a live
-currency API, and a motion pass on the landing page.
+I planned and directed the work: I set the scope, made the architecture
+decisions, and led the debugging. Claude Code did the implementation under that
+direction.
 
-**Actual time ran to roughly 5–6 hours, not 4.** Where it went, honestly:
+It was verified two ways. There are 38 automated backend tests covering the CSV
+parser, analytics, simulation, token verification, the boundary between users,
+and the rate cache. Every interface change was also tested by hand in a browser,
+which is what caught the problems that tests would not: a decorative background
+that added a horizontal scrollbar, a chart line that rendered in disconnected
+pieces, and a colour contrast failure on button labels that predated this work.
+The deployed signed-in flow was verified end to end by hand.
 
-- The starting repo needed work before any feature could land. `ResultsChart`
-  was a stub returning `null`, so the headline feature — the spending charts —
-  did not exist and had to be built. There was also no working local dev loop:
-  the frontend calls `/api/*`, nothing served that path under `npm run dev`, so
-  the only way to run the app was a full Minikube deploy.
-- The landing page was iterated three times. That was scope added during the
-  work, not underestimation of the original plan.
-- Some of it was environment, not code: the Docker VM ran out of disk mid-build
-  because the host disk was full, which cost a rebuild and a restart.
+## Time
 
-The three requested features came in near their estimates. The overrun is
-mostly pre-existing gaps and added scope, and it seemed more useful to record
-that than to quietly round the number down.
+Roughly 6 to 7 hours. Git shows 6.4 hours between the first and last commit,
+plus assessment and planning beforehand.
+
+The time went to three things. The requested features: Supabase auth with
+per-user scoping, the currency API, and the landing page animations. Groundwork
+the starting repo needed first, since the results chart was an empty placeholder
+and there was no working local development setup. And deployment, which
+surfaced three bugs that only appear in production: a build misconfiguration, an
+API path being swallowed by a routing rule, and a mismatched allowed origin.
 
 ## Known limitations
 
