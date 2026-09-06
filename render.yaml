@@ -4,9 +4,9 @@
 # this repo, so the container that runs in production is the same one that runs
 # locally and in Minikube - no second build path to keep in sync.
 #
-# The frontend is NOT here. It is a static bundle, so it goes to Netlify or
-# Vercel (see README), which is free and puts it on a CDN. That split is also
-# why CORS_ORIGINS and VITE_API_URL exist: the two halves end up on different
+# The frontend is NOT here. It is a static bundle, so it goes to Vercel (see
+# README), which is free and puts it on a CDN. That split is also why
+# CORS_ORIGINS and VITE_API_URL exist: the two halves end up on different
 # domains.
 #
 # To deploy: push this repo to GitHub, then Render -> New -> Blueprint and
@@ -41,7 +41,8 @@ services:
       # backend needs it to fetch the JWKS it verifies tokens against.
       - key: SUPABASE_URL
         sync: false
-      # Your deployed frontend origin, e.g. https://your-app.netlify.app.
+      # Your deployed frontend origin, e.g. https://your-app.vercel.app.
+      # Comma-separated if you also want Vercel preview URLs to reach the API.
       # Without this the browser blocks every API call as a CORS failure.
       - key: CORS_ORIGINS
         sync: false

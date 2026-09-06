@@ -117,7 +117,7 @@ Minikube can't give you a public URL, so the hosted split is:
 
 - **Backend + Redis → Render.** It builds `backend/Dockerfile` directly, so the
   container in production is the one that runs locally.
-- **Frontend → Netlify.** It's a static bundle; Netlify puts it on a CDN free.
+- **Frontend → Vercel.** It's a static bundle; Vercel puts it on a CDN free.
 - **Auth → Supabase**, already hosted.
 
 ### 1. Backend on Render
@@ -126,13 +126,15 @@ Push to GitHub, then **Render → New → Blueprint** and point it at the repo.
 `render.yaml` defines the web service and Redis. You'll be asked for two values:
 
 - `SUPABASE_URL` — your project URL
-- `CORS_ORIGINS` — your Netlify URL (fill in after step 2, then redeploy)
+- `CORS_ORIGINS` — your Vercel URL (fill in after step 2, then redeploy)
 
-### 2. Frontend on Netlify
+### 2. Frontend on Vercel
 
-**Netlify → Add new site → Import from Git.** `frontend/netlify.toml` sets the
-build. Add three environment variables in **Site settings → Environment
-variables**:
+**Vercel → Add New → Project**, import the repo, and set the **Root Directory**
+to `frontend`. `frontend/vercel.json` supplies the rest (Vite build, `npm ci`,
+and the SPA rewrite so deep links don't 404).
+
+Add three environment variables under **Settings → Environment Variables**:
 
 | Variable | Value |
 |---|---|
@@ -140,12 +142,18 @@ variables**:
 | `VITE_SUPABASE_ANON_KEY` | the publishable key |
 | `VITE_API_URL` | your Render URL, e.g. `https://financial-platform-api.onrender.com` |
 
-`VITE_*` values are baked in at build time, so changing one needs a rebuild.
+`VITE_*` values are baked into the bundle at build time, so changing one needs a
+redeploy, not just a restart.
 
 ### 3. Close the loop
 
-Set `CORS_ORIGINS` on Render to the Netlify origin and redeploy. Without it the
-browser blocks every API call.
+Set `CORS_ORIGINS` on Render to your Vercel origin (e.g.
+`https://your-app.vercel.app`) and redeploy. Without it the browser blocks every
+API call.
+
+Vercel also gives every deployment its own preview URL on a different subdomain.
+Those are *not* covered by the origin above — add them to `CORS_ORIGINS` as a
+comma-separated list if you want previews to reach the API.
 
 > Render's free tier sleeps after inactivity, so the first request after a quiet
 > spell takes ~30s to wake. Fine for a demo; worth knowing before you present.
