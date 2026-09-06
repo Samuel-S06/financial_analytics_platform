@@ -38,7 +38,7 @@ const sparkPoints = MONTHLY.map((m, i) => {
 })
 const sparkPath = sparkPoints.map(([x, y], i) => `${i ? 'L' : 'M'}${x},${y}`).join(' ')
 
-export default function LandingPreview() {
+export default function LandingPreview({ delay = 0 }) {
   const reduced = useReducedMotion()
 
   return (
@@ -50,9 +50,9 @@ export default function LandingPreview() {
           opacity: 1,
           y: 0,
           transition: reduced
-            ? { duration: 0.2 }
-            : { type: 'spring', stiffness: 240, damping: 28, when: 'beforeChildren',
-                staggerChildren: 0.07 },
+            ? { duration: 0.2, delay: 0 }
+            : { type: 'spring', stiffness: 240, damping: 28, delay,
+                when: 'beforeChildren', staggerChildren: 0.07 },
         },
       }}
     >

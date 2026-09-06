@@ -40,6 +40,9 @@
 
 body {
   margin: 0;
+  /* The hero's decorative layer is 100vw inside a 1100px column. clip (not
+     hidden) contains it without creating a scroll container. */
+  overflow-x: clip;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -129,8 +132,24 @@ body {
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.15s ease, box-shadow 0.15s ease;
   font-family: inherit;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px -6px rgba(15, 118, 110, 0.5);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover:not(:disabled),
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .btn:hover:not(:disabled) {
@@ -409,17 +428,20 @@ body {
 }
 
 .hero-title {
-  font-size: 2.5rem;
-  line-height: 1.15;
-  margin: 0 0 0.75rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 3.25rem;
+  line-height: 1.05;
+  margin: 0 0 1rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
 }
 
 .hero-subtitle {
   font-size: 1.05rem;
-  color: var(--text-muted);
+  /* Darker than --text-muted on purpose: this text sits on the tinted wash,
+     where the muted token measures below the 4.5:1 AA needs for body copy. */
+  color: #464d57;
   margin: 0;
+  max-width: 34ch;
 }
 
 .landing-grid {
@@ -434,7 +456,7 @@ body {
     grid-template-columns: 1fr;
   }
   .hero-title {
-    font-size: 2rem;
+    font-size: 2.25rem;
   }
 }
 
@@ -606,70 +628,6 @@ body {
   white-space: nowrap;
 }
 
-/* --- Landing atmosphere ---------------------------------------------------
-   Two soft washes drifting behind the hero. Purely decorative: they sit
-   under everything, ignore pointer events, and are hidden from screen
-   readers. Kept very low opacity - this is atmosphere, not a feature. */
-
-.landing {
-  position: relative;
-}
-
-.landing-glow {
-  position: absolute;
-  /* Was inset horizontally by -20%, which made this container wider than the
-     page and gave the whole document a horizontal scrollbar. The washes are
-     large and blurred enough to still read as off-edge without it. */
-  inset: -10% 0 auto;
-  height: 560px;
-  pointer-events: none;
-  z-index: 0;
-  /* Clipped horizontally so the washes can't widen the page, then faded out
-     vertically - without the mask, clipping leaves a hard seam straight
-     across the page where the blur is cut off. */
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
-}
-
-.landing-glow .glow {
-  position: absolute;
-  display: block;
-  border-radius: 50%;
-  filter: blur(90px);
-}
-
-.glow-a {
-  width: 460px;
-  height: 460px;
-  left: -6%;
-  top: -4%;
-  background: rgba(45, 149, 150, 0.16);
-}
-
-.glow-b {
-  width: 400px;
-  height: 400px;
-  right: -4%;
-  top: 6%;
-  background: rgba(13, 148, 136, 0.11);
-}
-
-/* Keep the content above the wash. */
-.landing .hero,
-.landing .landing-grid {
-  position: relative;
-  z-index: 1;
-}
-
-/* The glows animate via Framer Motion, which already honours reduced motion.
-   This covers the blur itself for anyone who finds it heavy. */
-@media (prefers-reduced-motion: reduce) {
-  .landing-glow {
-    display: none;
-  }
-}
-
 /* Height-animated banners must not spill while collapsing. */
 .auth-card .status-banner {
   overflow: hidden;
@@ -805,4 +763,157 @@ body {
   letter-spacing: 0.02em;
   position: relative;
   z-index: 1;
+}
+
+/* --- Landing: atmosphere --------------------------------------------------
+   A full-bleed wash plus four blurred shapes sitting behind the hero and the
+   card row, for depth. Decorative: no pointer events, hidden from assistive
+   tech, and removed entirely under reduced motion. */
+
+.landing-top {
+  position: relative;
+  padding-bottom: 3.5rem;
+}
+
+.landing-atmosphere {
+  position: absolute;
+  top: -2.5rem;
+  bottom: 0;
+  /* Escape the 1100px content column out to the viewport edges. body has
+     overflow-x: clip, so the extra width never becomes a scrollbar. */
+  left: calc(-50vw + 50%);
+  width: 100vw;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(90% 70% at 18% 8%, rgba(13, 148, 136, 0.085), transparent 60%),
+    radial-gradient(70% 60% at 88% 22%, rgba(45, 149, 150, 0.075), transparent 62%),
+    linear-gradient(180deg, rgba(221, 239, 237, 0.38), rgba(245, 244, 240, 0) 82%);
+  /* Fade the whole layer out at the bottom so it ends on nothing rather than
+     on a hard edge across the page. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+}
+
+.landing-atmosphere .shape {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  /* Static blur: animating the radius would repaint a very large blurred
+     surface every frame. Only transform and opacity move. */
+  filter: blur(70px);
+  will-change: transform;
+}
+
+.shape-a {
+  width: 380px; height: 380px;
+  left: 6%; top: -6%;
+  background: rgba(13, 148, 136, 0.14);
+}
+.shape-b {
+  width: 300px; height: 300px;
+  right: 10%; top: 4%;
+  background: rgba(45, 149, 150, 0.11);
+}
+.shape-c {
+  width: 340px; height: 340px;
+  left: 38%; top: 34%;
+  background: rgba(15, 118, 110, 0.07);
+}
+.shape-d {
+  width: 260px; height: 260px;
+  right: 26%; bottom: -4%;
+  background: rgba(221, 239, 237, 0.6);
+}
+
+/* Reduced motion means less movement, not less design. The shapes stay -
+   Framer already holds them still - so the page keeps its depth without
+   anything drifting. */
+@media (prefers-reduced-motion: reduce) {
+  .landing-atmosphere .shape {
+    animation: none;
+  }
+}
+
+/* Content sits above the wash. */
+.landing-top > *:not(.landing-atmosphere) {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Landing: wordmark ---------------------------------------------------- */
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-top: 0.25rem;
+}
+
+.brand-mark {
+  width: 22px;
+  height: 22px;
+  fill: var(--accent);
+  flex: none;
+}
+
+.brand-name {
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+/* --- Landing: the card stage ---------------------------------------------
+   The two cards sat on flat ground. They now sit in a lit frame: a soft teal
+   wash inside, a gradient hairline border, and a low glow beneath. */
+
+.card-stage {
+  position: relative;
+  margin-top: 2.5rem;
+  padding: 1.6rem;
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 130% at 50% 0%, rgba(13, 148, 136, 0.09), transparent 68%),
+    rgba(255, 255, 255, 0.45);
+  box-shadow: 0 24px 60px -28px rgba(15, 118, 110, 0.35);
+}
+
+/* Gradient border: a gradient-filled pseudo-element masked down to a 1px
+   ring, since border-image can't follow border-radius. */
+.card-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    145deg,
+    rgba(13, 148, 136, 0.42),
+    rgba(13, 148, 136, 0.06) 46%,
+    rgba(45, 149, 150, 0.30)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .card-stage {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+}
+
+/* --- Landing: footer ------------------------------------------------------ */
+
+.landing-footer {
+  margin: 2.5rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }

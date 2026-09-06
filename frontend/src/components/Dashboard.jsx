@@ -63,7 +63,7 @@ export default function Dashboard() {
     <>
       <header className="header dashboard-header">
         <div>
-          <h1>Financial Analytics Platform</h1>
+          <h1>Spendline</h1>
           <p className="subtitle">
             Upload transactions, see spending breakdowns, and simulate savings goals.
           </p>

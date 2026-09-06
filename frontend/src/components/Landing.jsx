@@ -2,7 +2,18 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import LandingPreview from './LandingPreview'
+import Wordmark from './Wordmark'
 import { isSupabaseConfigured } from '../lib/supabase'
+
+// Four blurred shapes drifting behind the hero. Drift on all of them; a slow
+// breath on only two - pulsing everything at once reads as busy, which is the
+// opposite of the intent.
+const SHAPES = [
+  { id: 'a', drift: { x: [0, 30, 0], y: [0, -20, 0] }, pulse: [1, 1.06, 1], duration: 19 },
+  { id: 'b', drift: { x: [0, -26, 0], y: [0, 22, 0] }, pulse: null, duration: 23 },
+  { id: 'c', drift: { x: [0, 18, 0], y: [0, 26, 0] }, pulse: [1, 1.05, 1], duration: 27 },
+  { id: 'd', drift: { x: [0, -22, 0], y: [0, -16, 0] }, pulse: null, duration: 21 },
+]
 
 const FEATURES = [
   ['Upload a CSV', 'Drop in a bank export. Bad rows are cleaned and reported, not silently dropped.'],
@@ -21,38 +32,57 @@ const FEATURES = [
  * Under prefers-reduced-motion every distance and blur collapses to zero and
  * only opacity is left - the sequence still reads, nothing moves.
  */
-const container = (reduced) => ({
-  hidden: {},
-  shown: {
-    transition: {
-      staggerChildren: reduced ? 0.04 : 0.09,
-      delayChildren: reduced ? 0 : 0.08,
-    },
-  },
-})
+/**
+ * Entrance choreography.
+ *
+ * Each element states its own delay rather than inheriting a staggerChildren
+ * cascade. The sequence is deliberate - wordmark, headline, subtext, the
+ * sample card, then the form - and DOM order no longer silently decides it,
+ * so moving markup around can't reshuffle the timing.
+ *
+ * Under prefers-reduced-motion every distance collapses to zero and only
+ * opacity is left: the sequence still reads, nothing moves.
+ */
+const BEAT = 0.1
 
-const rise = (reduced) => ({
+const container = { hidden: {}, shown: {} }
+
+const rise = (reduced, delay = 0) => ({
   hidden: { opacity: 0, y: reduced ? 0 : 18 },
   shown: {
     opacity: 1,
     y: 0,
     transition: reduced
-      ? { duration: 0.2 }
-      // Springs rather than eases: the arrival settles instead of stopping
-      // dead, which is what makes it read as physical.
-      : { type: 'spring', stiffness: 260, damping: 26, mass: 0.9 },
+      ? { duration: 0.2, delay: 0 }
+      // Springs rather than eases: the arrival settles instead of stopping dead.
+      : { type: 'spring', stiffness: 260, damping: 26, mass: 0.9, delay },
   },
 })
 
-const slideIn = (reduced) => ({
-  hidden: { opacity: 0, x: reduced ? 0 : 24 },
+// The form is the thing we want people to reach, so it arrives last and with
+// the most personality: a low overshoot - stiff spring, light damping - reads
+// as a small hop rather than a slide.
+const hop = (reduced, delay = 0) => ({
+  hidden: { opacity: 0, y: reduced ? 0 : 44, scale: reduced ? 1 : 0.97 },
   shown: {
     opacity: 1,
-    x: 0,
+    y: 0,
+    scale: 1,
     transition: reduced
       ? { duration: 0.2 }
-      : { type: 'spring', stiffness: 220, damping: 28, delay: 0.12 },
+      : { type: 'spring', stiffness: 320, damping: 17, mass: 0.85, delay },
   },
+})
+
+// The feature blurbs are below the fold, so they wait for the reader rather
+// than firing on load where nobody sees them.
+const revealOnScroll = (reduced, index) => ({
+  initial: { opacity: 0, y: reduced ? 0 : 16 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, amount: 0.6 },
+  transition: reduced
+    ? { duration: 0.2 }
+    : { duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: index * 0.09 },
 })
 
 export default function Landing() {
@@ -138,39 +168,50 @@ VITE_SUPABASE_ANON_KEY=<publishable key>`}
   return (
     <motion.div
       className="landing"
-      variants={container(reduced)}
+      variants={container}
       initial="hidden"
       animate="shown"
     >
-      {/* Two slow-drifting washes behind the hero. Decorative only, so it is
-          hidden from assistive tech, and it holds still under reduced motion. */}
-      <div className="landing-glow" aria-hidden="true">
-        <motion.span
-          className="glow glow-a"
-          animate={reduced ? {} : { x: [0, 28, 0], y: [0, -18, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.span
-          className="glow glow-b"
-          animate={reduced ? {} : { x: [0, -24, 0], y: [0, 20, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      </div>
+      <div className="landing-top">
+        {/* Decorative depth behind the hero: a full-bleed wash plus four
+            blurred shapes. Only transform and opacity animate - moving the
+            blur radius itself would force a repaint of a very large blurred
+            surface every frame and judder. Hidden from assistive tech, and
+            held still under reduced motion. */}
+        <div className="landing-atmosphere" aria-hidden="true">
+          {SHAPES.map(({ id, drift, pulse, duration }) => (
+            <motion.span
+              key={id}
+              className={`shape shape-${id}`}
+              animate={reduced ? {} : {
+                x: drift.x,
+                y: drift.y,
+                ...(pulse ? { scale: pulse } : {}),
+              }}
+              transition={{ duration, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          ))}
+        </div>
 
-      <section className="hero">
-        <motion.h1 className="hero-title" variants={rise(reduced)}>
-          Know where the money went.
-        </motion.h1>
-        <motion.p className="hero-subtitle" variants={rise(reduced)}>
-          Upload a transaction CSV and get a spending breakdown, a month-by-month
-          trend, and a savings plan you can actually hit.
-        </motion.p>
-      </section>
+        <motion.div variants={rise(reduced, 0)}>
+          <Wordmark />
+        </motion.div>
 
-      <div className="landing-grid">
-        <LandingPreview />
+        <section className="hero">
+          <motion.h1 className="hero-title" variants={rise(reduced, BEAT)}>
+            Know where the money went.
+          </motion.h1>
+          <motion.p className="hero-subtitle" variants={rise(reduced, BEAT * 1.6)}>
+            Upload a transaction CSV and get a spending breakdown, a month-by-month
+            trend, and a savings plan you can actually hit.
+          </motion.p>
+        </section>
 
-        <motion.div className="card auth-card" variants={slideIn(reduced)}>
+        <div className="card-stage">
+          <div className="landing-grid">
+            <LandingPreview delay={BEAT * 2.4} />
+
+            <motion.div className="card auth-card" variants={hop(reduced, BEAT * 3.4)}>
           <div className="auth-tabs" role="tablist">
             {[['signin', 'Sign in'], ['signup', 'Create account']].map(([key, label]) => (
               <button
@@ -250,21 +291,23 @@ VITE_SUPABASE_ANON_KEY=<publishable key>`}
                 : mode === 'signup' ? 'Create account' : 'Sign in'}
             </motion.button>
           </form>
-        </motion.div>
+            </motion.div>
+          </div>
+        </div>
       </div>
 
       <ul className="feature-strip">
-        {FEATURES.map(([title, body]) => (
-          <motion.li className="feature" key={title} variants={rise(reduced)}>
+        {FEATURES.map(([title, body], i) => (
+          <motion.li className="feature" key={title} {...revealOnScroll(reduced, i)}>
             <h3>{title}</h3>
             <p>{body}</p>
           </motion.li>
         ))}
       </ul>
 
-      <motion.p className="stack-line" variants={rise(reduced)}>
-        FastAPI · React · Redis · Docker · Kubernetes · Supabase
-      </motion.p>
+      <motion.footer className="landing-footer" {...revealOnScroll(reduced, 3)}>
+        Made with love by Samuel Sosa © 2026
+      </motion.footer>
     </motion.div>
   )
 }
