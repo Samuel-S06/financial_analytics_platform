@@ -2,21 +2,80 @@
 
 **Live: <https://spendline-ots2.vercel.app>**
 
-Upload a CSV of bank transactions and get a spending breakdown, a month-by-month
-trend, and a savings simulation — behind per-user accounts, with totals viewable
-in a second currency.
+## Summary
 
-Built for CIS 1912 as a Kubernetes deployment, then extended with
-authentication, a live external API, and a motion pass on the landing page.
+Spendline is a full-stack personal finance tool. You upload a CSV of bank
+transactions and get a spending breakdown by category, a month by month trend,
+and a savings goal simulation, all behind per user accounts with totals
+convertible into other currencies at live rates.
 
-| Piece | Where it runs |
-|---|---|
-| Frontend | Vercel — <https://spendline-ots2.vercel.app> |
-| API + Redis | Render — <https://spendline-api.onrender.com> |
-| Auth | Supabase |
+It started as my CIS 1912 final project, a FastAPI and React app deployed on
+Kubernetes with Helm, Terraform and GitHub Actions. During Spark application
+week I extended it with authentication, per user data scoping, an external API
+integration, a redesigned animated frontend, and a public deployment.
 
-> Render's free tier sleeps after inactivity, so the first request after a quiet
-> spell takes ~30s to wake. If the page seems to hang on first load, that's why.
+I planned and directed the work. I set the scope, made the architecture
+decisions, and led the debugging. Claude Code did the implementation under that
+direction. I verified it two ways: 38 automated backend tests covering the CSV
+parser, analytics, simulation, token verification, the boundary between users,
+and the rate cache; plus manual browser testing of every interface change. That
+manual testing caught real problems, including a decorative background that
+added a horizontal scrollbar, a chart line that rendered in disconnected pieces,
+and a colour contrast failure on button labels that predated this week. I also
+verified the deployed signed in flow end to end by hand.
+
+## Time
+
+Roughly 6 to 7 hours. Git shows 6.4 hours between the first and last commit,
+plus assessment and planning beforehand.
+
+The time went to three things. The requested features: Supabase auth with per
+user scoping, the currency API, and the landing page animations. Groundwork the
+starting repo needed first, since the results chart was an empty placeholder and
+there was no working local development setup. And deployment, which surfaced
+three bugs that only appear in production: a build misconfiguration, an API path
+being swallowed by a routing rule, and a mismatched allowed origin.
+
+## Features
+
+**Frontend: components, animations, responsiveness**
+
+- React 18 with Vite. Components for upload, charts, simulation, authentication,
+  dashboard, empty state and error state.
+- Recharts spending breakdown and monthly trend. A separate animated preview on
+  the landing page built from real sample output.
+- Framer Motion for a staggered entrance, a sliding tab indicator, scroll
+  triggered reveals, and smoothly expanding message banners.
+- Respects the reduced motion setting. Works down to 390px wide. Colour contrast
+  was measured on the rendered page, not assumed.
+
+**Backend: authentication, external API, data**
+
+- FastAPI on Python 3.12. Uploads return immediately with a job id and the
+  frontend polls for the result.
+- Verifies Supabase tokens, supporting both signing methods Supabase uses.
+- Each user's jobs are indexed separately in Redis. Requesting another user's
+  data returns "not found" rather than "forbidden", so the response cannot
+  confirm the record exists.
+- Live exchange rates from the Frankfurter API, fetched server side and cached in
+  Redis, falling back to the last known rates if the service is unreachable.
+- Redis stores job state and parsed data, so backend instances hold nothing
+  themselves and can scale freely.
+
+**Full-stack integration**
+
+- The session token is attached to every request automatically, so refreshed
+  tokens are picked up without extra work.
+- The client rejects responses that are not valid data, and the interface checks
+  the shape of what it receives before using it.
+- An error boundary shows what went wrong instead of a blank page.
+
+**Deployment**
+
+- Live at <https://spendline-ots2.vercel.app>. Frontend on Vercel, API and Redis
+  on Render built from the repo's own Dockerfile, authentication on Supabase.
+- The original Kubernetes setup is still in the repo: Helm chart with autoscaling
+  and health checks, Terraform, and GitHub Actions.
 
 ## How to try it
 
@@ -30,62 +89,6 @@ authentication, a live external API, and a motion pass on the landing page.
 
 The API sleeps when idle on the free plan, so the first action after signing in
 can take about 30 seconds.
-
-## What it does
-
-- **Upload a CSV** — bad rows are cleaned and *reported*, not silently dropped
-- **See where the money went** — spending by category and by month
-- **Simulate a savings goal** — pick a target, a timeframe, and categories to cut
-  from; get recommended monthly budgets and a feasibility verdict
-- **Switch currency** — totals convert into any of nine other currencies at live rates
-- **Accounts** — each user only ever sees their own uploads
-
-## How it's built
-
-| Layer | What runs |
-|---|---|
-| Frontend | React 18 + Vite, Recharts, Framer Motion |
-| Backend | FastAPI (Python 3.12), pandas |
-| Job state | Redis — parsed DataFrames as parquet, plus per-user job indexes |
-| Auth | Supabase (email/password); the backend verifies JWTs, never sees a password |
-| Rates | Frankfurter (ECB reference rates), server-side and Redis-cached |
-| Deployment | Docker, Kubernetes (Minikube), Helm, Terraform, GitHub Actions |
-
-### How a request flows
-
-Uploads return `202` with a `job_id` immediately and the work runs in the
-background; the frontend polls `GET /job/{id}` until it's terminal. Parsed data
-is stored in Redis as parquet, so a simulation can land on a different backend
-pod than the upload did and still find its data. That's what keeps the backend
-pods stateless and horizontally scalable.
-
-Jobs are indexed under `user:{id}:jobs`, a sorted set scored by creation time.
-Reading or simulating against another user's job returns **404, not 403** — a
-403 would confirm the id exists.
-
-## Features included
-
-Mapped to the assessment's suggested criteria.
-
-**Frontend**
-- Components: upload, charts, simulation, authentication, dashboard, empty state, error state
-- Animations: staggered entrance, sliding tab indicator, scroll-triggered reveals, expanding message banners, all respecting the reduced motion setting
-- Mobile responsiveness: works down to 390px wide, with no sideways scrolling
-
-**Backend**
-- Registration, login and logout through Supabase; the backend verifies tokens and never handles a password
-- API calls: live exchange rates from the Frankfurter API, fetched server-side and cached
-- Data layer: Redis holds job state, parsed transaction data, and a per-user index, so each account only ever sees its own uploads
-- Classes and objects: a job store interface with Redis and in-memory implementations, so tests run without a server
-
-**Full-stack**
-- React frontend against a FastAPI backend, with tokens attached to every request automatically
-- Asynchronous job handling: uploads return straight away and the frontend polls for the result
-
-**Deployment**
-- Live on Vercel and Render, with authentication on Supabase
-- Also deployable to Kubernetes with the Helm chart and Terraform in this repo
-- 38 backend tests and linting run in GitHub Actions on every push
 
 ---
 
@@ -297,32 +300,6 @@ What's in here:
   cluster bootstrap; Helm owns the application.
 - **`.github/workflows/ci.yml`** — ruff, pytest, and both image builds on push.
 - **`Makefile`** — every workflow: `make up`, `deploy`, `test`, `status`, `down`.
-
-## How this was built
-
-I planned and directed the work: I set the scope, made the architecture
-decisions, and led the debugging. Claude Code did the implementation under that
-direction.
-
-It was verified two ways. There are 38 automated backend tests covering the CSV
-parser, analytics, simulation, token verification, the boundary between users,
-and the rate cache. Every interface change was also tested by hand in a browser,
-which is what caught the problems that tests would not: a decorative background
-that added a horizontal scrollbar, a chart line that rendered in disconnected
-pieces, and a colour contrast failure on button labels that predated this work.
-The deployed signed-in flow was verified end to end by hand.
-
-## Time
-
-Roughly 6 to 7 hours. Git shows 6.4 hours between the first and last commit,
-plus assessment and planning beforehand.
-
-The time went to three things. The requested features: Supabase auth with
-per-user scoping, the currency API, and the landing page animations. Groundwork
-the starting repo needed first, since the results chart was an empty placeholder
-and there was no working local development setup. And deployment, which
-surfaced three bugs that only appear in production: a build misconfiguration, an
-API path being swallowed by a routing rule, and a mismatched allowed origin.
 
 ## Known limitations
 
