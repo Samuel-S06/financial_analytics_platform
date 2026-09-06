@@ -13,10 +13,13 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy package files first for better layer caching - npm install only re-runs
+# Copy package files first for better layer caching - the install only re-runs
 # when package.json/lock changes, not on every source edit.
 COPY package*.json ./
-RUN npm install
+# ci, not install: it installs exactly what package-lock.json pins and fails
+# if the two have drifted, so an image build can't quietly resolve different
+# versions than a local one.
+RUN npm ci
 
 # Copy source and build the static bundle.
 COPY . .

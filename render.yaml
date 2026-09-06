@@ -1,0 +1,56 @@
+# Render blueprint: the backend API and its Redis.
+#
+# Why Render for the backend: it builds the Dockerfile that already exists in
+# this repo, so the container that runs in production is the same one that runs
+# locally and in Minikube - no second build path to keep in sync.
+#
+# The frontend is NOT here. It is a static bundle, so it goes to Netlify or
+# Vercel (see README), which is free and puts it on a CDN. That split is also
+# why CORS_ORIGINS and VITE_API_URL exist: the two halves end up on different
+# domains.
+#
+# To deploy: push this repo to GitHub, then Render -> New -> Blueprint and
+# point it at the repo. Fill in the two values marked sync:false when asked.
+
+services:
+  - type: web
+    name: financial-platform-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: USE_REDIS
+        value: "true"
+      # Render injects the connection string; the app wants host and port.
+      # fromService pulls them straight off the Redis instance below.
+      - key: REDIS_HOST
+        fromService:
+          name: financial-platform-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: financial-platform-redis
+          type: redis
+          property: port
+      - key: AUTH_ENABLED
+        value: "true"
+      # Set when creating the blueprint - your Supabase project URL. The
+      # backend needs it to fetch the JWKS it verifies tokens against.
+      - key: SUPABASE_URL
+        sync: false
+      # Your deployed frontend origin, e.g. https://your-app.netlify.app.
+      # Without this the browser blocks every API call as a CORS failure.
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: redis
+    name: financial-platform-redis
+    plan: free
+    # Only the API talks to Redis, and both live in the same Render network.
+    ipAllowList: []
+    # Job state is disposable - it already carries a 24h TTL - so evicting the
+    # oldest keys under memory pressure is the right behaviour here.
+    maxmemoryPolicy: allkeys-lru
