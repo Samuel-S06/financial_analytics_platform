@@ -37,7 +37,7 @@ export default function Upload({ onJobSubmitted, disabled }) {
   }
 
   return (
-    <div className="card">
+    <div className="card upload-card">
       <h2>Upload transactions</h2>
       <p className="card-subtitle">
         CSV with columns: date, category, amount (description optional)

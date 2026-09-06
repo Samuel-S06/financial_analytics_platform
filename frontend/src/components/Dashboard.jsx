@@ -3,6 +3,8 @@ import { listJobs } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { useCurrency } from '../context/CurrencyContext'
 import CurrencyPicker from './CurrencyPicker'
+import DashboardHeader from './DashboardHeader'
+import EmptyState from './EmptyState'
 import JobStatus from './JobStatus'
 import ResultsChart from './ResultsChart'
 import SimulationForm from './SimulationForm'
@@ -23,7 +25,7 @@ import Upload from './Upload'
  */
 export default function Dashboard() {
   const { user, signOut } = useAuth()
-  const { money } = useCurrency()
+  const { money, asOf, stale } = useCurrency()
 
   const [uploadJobId, setUploadJobId] = useState(null)
   const [analysis, setAnalysis] = useState(null)
@@ -36,8 +38,14 @@ export default function Dashboard() {
   // The user's own upload history. Scoped server-side by the token, so this
   // never contains anyone else's jobs.
   const [history, setHistory] = useState([])
+  // Tracked separately so the empty state doesn't flash before the first
+  // response lands for someone who does have uploads.
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const refreshHistory = useCallback(() => {
-    listJobs().then(setHistory).catch(() => setHistory([]))
+    listJobs()
+      .then(setHistory)
+      .catch(() => setHistory([]))
+      .finally(() => setHistoryLoaded(true))
   }, [])
 
   useEffect(() => { refreshHistory() }, [refreshHistory])
@@ -61,21 +69,19 @@ export default function Dashboard() {
 
   return (
     <>
-      <header className="header dashboard-header">
-        <div>
-          <h1>Spendline</h1>
-          <p className="subtitle">
-            Upload transactions, see spending breakdowns, and simulate savings goals.
-          </p>
-        </div>
-        <div className="account">
-          <CurrencyPicker />
-          <span className="account-email">{user?.email}</span>
-          <button className="btn secondary" onClick={signOut}>Sign out</button>
-        </div>
-      </header>
+      <DashboardHeader
+        email={user?.email}
+        meta={asOf ? (stale ? 'rates may be out of date' : `rates ${asOf}`) : null}
+        controls={<CurrencyPicker />}
+        onSignOut={signOut}
+      />
 
-      {!uploadJobId && <Upload onJobSubmitted={setUploadJobId} />}
+      {!uploadJobId && (
+        <>
+          <Upload onJobSubmitted={setUploadJobId} />
+          {historyLoaded && history.length === 0 && <EmptyState />}
+        </>
+      )}
 
       {uploadJobId && !analysis && !analysisError && (
         <JobStatus
@@ -150,10 +156,8 @@ export default function Dashboard() {
       )}
 
       <footer className="footer">
-        Deployed on Kubernetes · FastAPI + React ·{' '}
-        <a href="/api/health" target="_blank" rel="noopener" style={{ color: 'var(--accent)' }}>
-          backend health
-        </a>
+        <span>Made with love by Samuel Sosa © 2026</span>
+        <a href="/api/health" target="_blank" rel="noopener">API status</a>
       </footer>
     </>
   )

@@ -102,15 +102,15 @@ export default function Landing() {
   }
 
   // This project keeps Supabase's "Confirm email" on, so a new account has no
-  // session until it's confirmed - by the emailed link, or by an admin in the
-  // Supabase dashboard under Authentication -> Users. Both paths end at the
-  // sign-in form, so say that plainly instead of leaving a dead end.
+  // session until it's confirmed. Both messages end at the sign-in form, so
+  // they say that plainly rather than leaving a dead end. Neither names the
+  // auth provider: how the account gets confirmed is our problem, not the
+  // reader's.
   const CONFIRM_REQUIRED =
-    'Account created. Confirm it from the email we sent (or have an admin ' +
-    'confirm it in Supabase), then sign in below.'
+    'Account created. Confirm it from the email we sent, then sign in below.'
   const NOT_CONFIRMED =
     'This account still needs confirming. Use the link in your signup email, ' +
-    'or have an admin confirm it in Supabase, then try again.'
+    'then try again.'
 
   const handleSubmit = async (e) => {
     e.preventDefault()

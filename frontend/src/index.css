@@ -340,12 +340,6 @@ body {
 }
 
 /* Footer */
-.footer {
-  margin-top: 2rem;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
 /* Charts: tooltip + notes.
    Mark colors live in the chart component (Recharts wants them as props),
    not here. */
@@ -399,25 +393,6 @@ body {
   display: flex;
   justify-content: center;
   padding-top: 6rem;
-}
-
-.dashboard-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.account {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.account-email {
-  font-size: 0.85rem;
-  color: var(--text-muted);
 }
 
 /* --- Landing -------------------------------------------------------------- */
@@ -599,7 +574,10 @@ body {
 }
 
 .currency-picker select {
-  padding: 0.35rem 0.5rem;
+  /* Matches the .btn box so the two controls line up as a pair rather than
+     one floating next to the other. */
+  padding: 0.6rem 0.65rem;
+  line-height: 1.2;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -916,4 +894,147 @@ body {
   border-top: 1px solid var(--border);
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+/* --- Dashboard: header ----------------------------------------------------
+   Two rows: what you act on (wordmark, currency, sign out) on top; what you
+   only read (account, rate freshness) beneath in muted type, so it isn't
+   competing with buttons for the same line. */
+
+.dashboard-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dashboard-meta {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.dashboard-meta .dot {
+  opacity: 0.6;
+}
+
+/* --- Dashboard: upload card ----------------------------------------------- */
+
+.upload-card {
+  position: relative;
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* A teal rule across the top, so the card reads as the primary action rather
+   than as a bare bordered box. */
+.upload-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+}
+
+/* --- Dashboard: empty state ----------------------------------------------
+   Before any upload there was a large blank gap where the results go, which
+   reads as broken rather than as empty. This reserves the space with the
+   shape of what's coming - deliberately inert, no numbers that could be
+   mistaken for real data. */
+
+.empty-state {
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  padding: 2rem 1.5rem 1.75rem;
+  text-align: center;
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(13, 148, 136, 0.045), transparent 70%);
+}
+
+.empty-skeleton {
+  max-width: 320px;
+  margin: 0 auto 1.5rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.empty-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.empty-label {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border);
+}
+
+.empty-track {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(227, 225, 219, 0.6);
+  overflow: hidden;
+}
+
+.empty-bar {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: rgba(13, 148, 136, 0.22);
+}
+
+.empty-title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.empty-body {
+  margin: 0 auto;
+  max-width: 44ch;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* --- Dashboard: footer ---------------------------------------------------- */
+
+.footer {
+  margin-top: 3rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.footer a {
+  color: var(--accent-dark);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
 }

@@ -4,8 +4,10 @@ import { useCurrency } from '../context/CurrencyContext'
  * Switches the display currency. Conversion is presentational only - the
  * uploaded data and every analysis stay in USD.
  */
+// The rate date used to hang off this control; it now lives on the header's
+// secondary line, so this is just the selector.
 export default function CurrencyPicker() {
-  const { currency, setCurrency, currencies, asOf, stale, error } = useCurrency()
+  const { currency, setCurrency, currencies, error } = useCurrency()
 
   if (error) {
     return <span className="currency-note" title={error}>USD</span>
@@ -23,11 +25,6 @@ export default function CurrencyPicker() {
           <option key={code} value={code}>{code}</option>
         ))}
       </select>
-      {asOf && (
-        <span className="currency-note">
-          {stale ? 'rates may be out of date' : `rates ${asOf}`}
-        </span>
-      )}
     </label>
   )
 }
