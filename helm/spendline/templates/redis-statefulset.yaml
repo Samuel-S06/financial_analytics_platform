@@ -4,7 +4,7 @@ metadata:
   name: redis
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "financial-platform.labels" . | nindent 4 }}
+    {{- include "spendline.labels" . | nindent 4 }}
     app: redis
 spec:
   # StatefulSet (not Deployment) because we want stable DNS names and a stable
@@ -19,7 +19,7 @@ spec:
     metadata:
       labels:
         app: redis
-        {{- include "financial-platform.labels" . | nindent 8 }}
+        {{- include "spendline.labels" . | nindent 8 }}
     spec:
       containers:
       - name: redis

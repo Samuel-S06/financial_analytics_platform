@@ -1174,3 +1174,37 @@ body {
   box-shadow: 0 18px 40px -18px rgba(4, 26, 26, 0.65),
               0 2px 6px rgba(4, 26, 26, 0.28);
 }
+
+/* --- Upload: sample data affordance --------------------------------------- */
+
+.upload-sample {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* A button that reads as a link: it performs an action rather than
+   navigating, so it must not be an anchor. */
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent-dark);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-btn:hover:not(:disabled) {
+  color: var(--accent-darker);
+}
+
+.link-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.upload-sample a {
+  color: var(--accent-dark);
+}

@@ -1,12 +1,12 @@
-# Default values for financial-platform.
+# Default values for spendline.
 # Override per-environment by passing -f values-prod.yaml or --set on the CLI.
 
-namespace: financial-platform
+namespace: spendline
 
 # --- Backend ---------------------------------------------------------------
 backend:
   image:
-    repository: financial-platform/backend
+    repository: spendline/backend
     # Tag matches what we build in the Makefile. In CI we'd override this with
     # the git SHA so each build is uniquely addressable.
     tag: dev
@@ -31,7 +31,7 @@ backend:
 # --- Frontend --------------------------------------------------------------
 frontend:
   image:
-    repository: financial-platform/frontend
+    repository: spendline/frontend
     tag: dev
     pullPolicy: IfNotPresent
   replicas: 1

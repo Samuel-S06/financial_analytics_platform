@@ -4,7 +4,7 @@ metadata:
   name: redis
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "financial-platform.labels" . | nindent 4 }}
+    {{- include "spendline.labels" . | nindent 4 }}
 spec:
   # clusterIP: None makes this a "headless" service - DNS lookups return the
   # pod IPs directly rather than a load-balanced VIP. That's what StatefulSets

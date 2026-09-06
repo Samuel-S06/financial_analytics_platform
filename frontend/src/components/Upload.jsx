@@ -7,6 +7,9 @@ import { uploadCsv } from '../api'
  * Calls onJobSubmitted(jobId) once the upload returns a job_id - the parent
  * is responsible for polling and showing results.
  */
+// Served from the repo's /sample-data via Vite's publicDir.
+const SAMPLE_URL = '/sample_transactions.csv'
+
 export default function Upload({ onJobSubmitted, disabled }) {
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -26,6 +29,21 @@ export default function Upload({ onJobSubmitted, disabled }) {
       setError(detail)
     } finally {
       setUploading(false)
+    }
+  }
+
+  // Runs the bundled sample through the same path a dropped file takes, so a
+  // reviewer can see real results without needing a bank export of their own.
+  const handleSample = async () => {
+    if (disabled || uploading) return
+    setError(null)
+    try {
+      const response = await fetch(SAMPLE_URL)
+      if (!response.ok) throw new Error(`Sample data unavailable (${response.status})`)
+      const blob = await response.blob()
+      await handleFile(new File([blob], 'sample_transactions.csv', { type: 'text/csv' }))
+    } catch (err) {
+      setError(err.message)
     }
   }
 
@@ -66,6 +84,15 @@ export default function Upload({ onJobSubmitted, disabled }) {
           </>
         )}
       </div>
+
+      <p className="upload-sample">
+        No export handy?{' '}
+        <button type="button" className="link-btn" onClick={handleSample} disabled={disabled || uploading}>
+          Try it with sample data
+        </button>
+        {' · '}
+        <a href={SAMPLE_URL} download>Download the CSV</a>
+      </p>
 
       {error && (
         <div className="status-banner error" style={{ marginTop: '1rem' }}>

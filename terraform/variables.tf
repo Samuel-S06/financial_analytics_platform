@@ -13,7 +13,7 @@ variable "kube_context" {
 variable "namespace" {
   description = "Namespace to create for the application."
   type        = string
-  default     = "financial-platform"
+  default     = "spendline"
 }
 
 variable "install_ingress_nginx" {

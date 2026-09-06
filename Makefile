@@ -1,13 +1,13 @@
-# Financial Analytics Platform - Makefile
+# Spendline - Makefile
 # A single entry point for all common workflows. Run `make help` to see options.
 
 # Variables ---------------------------------------------------------------
-BACKEND_IMAGE := financial-platform/backend
-FRONTEND_IMAGE := financial-platform/frontend
+BACKEND_IMAGE := spendline/backend
+FRONTEND_IMAGE := spendline/frontend
 TAG := dev
-NAMESPACE := financial-platform
-HELM_RELEASE := financial-platform
-HELM_CHART := ./helm/financial-platform
+NAMESPACE := spendline
+HELM_RELEASE := spendline
+HELM_CHART := ./helm/spendline
 
 # Use Minikube's docker daemon so images are available to the cluster
 # without needing to push to a registry. Equivalent to `eval $(minikube docker-env)`.

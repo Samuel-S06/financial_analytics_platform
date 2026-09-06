@@ -4,7 +4,7 @@ metadata:
   name: frontend
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "financial-platform.labels" . | nindent 4 }}
+    {{- include "spendline.labels" . | nindent 4 }}
     app: frontend
 spec:
   replicas: {{ .Values.frontend.replicas }}
@@ -15,7 +15,7 @@ spec:
     metadata:
       labels:
         app: frontend
-        {{- include "financial-platform.labels" . | nindent 8 }}
+        {{- include "spendline.labels" . | nindent 8 }}
     spec:
       containers:
       - name: frontend

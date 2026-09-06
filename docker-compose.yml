@@ -32,7 +32,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       USE_REDIS: "true"
-      SERVICE_NAME: financial-platform-backend
+      SERVICE_NAME: spendline-backend
       CORS_ORIGINS: "http://localhost:5173"
       AUTH_ENABLED: "true"
       # The project signs with ES256 and publishes a JWKS, so the URL is all

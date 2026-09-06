@@ -4,7 +4,7 @@ metadata:
   name: frontend
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "financial-platform.labels" . | nindent 4 }}
+    {{- include "spendline.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   selector:

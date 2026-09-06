@@ -1,4 +1,4 @@
-# Financial Analytics Platform
+# Spendline
 
 Upload a CSV of bank transactions and get a spending breakdown, a month-by-month
 trend, and a savings simulation — behind per-user accounts, with totals viewable
@@ -78,8 +78,13 @@ cd frontend && npm install && npm run dev   # UI on :5173
 
 Open <http://localhost:5173>, create an account, confirm it, and sign in.
 
-Drag `sample_transactions.csv` onto the upload zone. Charts appear, then run a
-simulation (say goal $600 over 12 months, cutting Dining and Entertainment).
+No bank export handy? Hit **Try it with sample data** under the upload zone and
+the bundled sample runs straight through. It lives at
+[`sample-data/sample_transactions.csv`](sample-data/sample_transactions.csv) and
+is served by the app, so you can also drag it in or download it.
+
+Charts appear, then run a simulation (say goal $600 over 12 months, cutting
+Dining and Entertainment).
 
 The Vite dev server proxies `/api/*` to the backend, mirroring what nginx does
 in the container — so the frontend is same-origin in development and in
@@ -140,7 +145,7 @@ Add three environment variables under **Settings → Environment Variables**:
 |---|---|
 | `VITE_SUPABASE_URL` | your Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | the publishable key |
-| `VITE_API_URL` | your Render URL, e.g. `https://financial-platform-api.onrender.com` |
+| `VITE_API_URL` | your Render URL, e.g. `https://spendline-api.onrender.com` |
 
 `VITE_*` values are baked into the bundle at build time, so changing one needs a
 redeploy, not just a restart.
@@ -175,7 +180,7 @@ the autoscaler; `make down` tears it all down.
 
 What's in here:
 
-- **`helm/financial-platform/`** — deployments, services, ingress, an HPA, and a
+- **`helm/spendline/`** — deployments, services, ingress, an HPA, and a
   Redis StatefulSet with a PVC. Comments cover probe choices and the ingress
   rewrite rules.
 - **`terraform/`** — the namespace and cluster-level resources. Terraform owns

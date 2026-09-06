@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Financial Analytics Platform - Backend",
+    title="Spendline - Backend",
     version="0.2.0",
     lifespan=lifespan,
 )
@@ -80,7 +80,7 @@ async def ready() -> HealthResponse:
 @app.get("/hello", response_model=HelloResponse)
 async def hello() -> HelloResponse:
     return HelloResponse(
-        message="Hello from the financial-platform backend!",
+        message="Hello from the spendline backend!",
         pod_hostname=socket.gethostname(),
     )
 

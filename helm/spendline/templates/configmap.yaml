@@ -4,7 +4,7 @@ metadata:
   name: backend-config
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "financial-platform.labels" . | nindent 4 }}
+    {{- include "spendline.labels" . | nindent 4 }}
 data:
   # Backend reads these via pydantic-settings. Pointing at the in-cluster
   # Redis service - resolves via k8s DNS as <service-name>.<namespace>.svc.cluster.local
@@ -12,4 +12,4 @@ data:
   REDIS_HOST: "redis"
   REDIS_PORT: "{{ .Values.redis.port }}"
   USE_REDIS: "true"
-  SERVICE_NAME: "financial-platform-backend"
+  SERVICE_NAME: "spendline-backend"

@@ -14,7 +14,7 @@
 
 services:
   - type: web
-    name: financial-platform-api
+    name: spendline-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -27,12 +27,12 @@ services:
       # fromService pulls them straight off the Redis instance below.
       - key: REDIS_HOST
         fromService:
-          name: financial-platform-redis
+          name: spendline-redis
           type: redis
           property: host
       - key: REDIS_PORT
         fromService:
-          name: financial-platform-redis
+          name: spendline-redis
           type: redis
           property: port
       - key: AUTH_ENABLED
@@ -48,7 +48,7 @@ services:
         sync: false
 
   - type: redis
-    name: financial-platform-redis
+    name: spendline-redis
     plan: free
     # Only the API talks to Redis, and both live in the same Render network.
     ipAllowList: []

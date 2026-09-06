@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -6,6 +7,11 @@ import react from '@vitejs/plugin-react'
 // the frontend to be a fully static artifact for portability.
 export default defineConfig({
   plugins: [react()],
+  // Serve the repo's sample data as static assets, so /sample-data has one
+  // home: discoverable at the repo root and downloadable from the running
+  // app, with no second copy to drift out of sync. Its contents land at the
+  // site root, so the CSV is served from /sample_transactions.csv.
+  publicDir: fileURLToPath(new URL('../sample-data', import.meta.url)),
   build: {
     outDir: 'dist',
   },

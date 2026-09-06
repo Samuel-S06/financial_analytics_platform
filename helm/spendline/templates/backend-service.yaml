@@ -4,7 +4,7 @@ metadata:
   name: backend
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "financial-platform.labels" . | nindent 4 }}
+    {{- include "spendline.labels" . | nindent 4 }}
 spec:
   # ClusterIP because external traffic comes through the ingress, not directly
   # to the backend. Reduces attack surface.

@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Terraform: cluster-level resources for the Financial Analytics Platform.
+# Terraform: cluster-level resources for the Spendline.
 #
 # Boundary of responsibility:
 #   - Terraform owns: the namespace, the ingress controller (ingress-nginx).
