@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import LandingPreview from './LandingPreview'
 import { isSupabaseConfigured } from '../lib/supabase'
 
 const FEATURES = [
@@ -167,14 +168,7 @@ VITE_SUPABASE_ANON_KEY=<publishable key>`}
       </section>
 
       <div className="landing-grid">
-        <ul className="feature-list">
-          {FEATURES.map(([title, body]) => (
-            <motion.li className="feature" key={title} variants={rise(reduced)}>
-              <h3>{title}</h3>
-              <p>{body}</p>
-            </motion.li>
-          ))}
-        </ul>
+        <LandingPreview />
 
         <motion.div className="card auth-card" variants={slideIn(reduced)}>
           <div className="auth-tabs" role="tablist">
@@ -258,6 +252,19 @@ VITE_SUPABASE_ANON_KEY=<publishable key>`}
           </form>
         </motion.div>
       </div>
+
+      <ul className="feature-strip">
+        {FEATURES.map(([title, body]) => (
+          <motion.li className="feature" key={title} variants={rise(reduced)}>
+            <h3>{title}</h3>
+            <p>{body}</p>
+          </motion.li>
+        ))}
+      </ul>
+
+      <motion.p className="stack-line" variants={rise(reduced)}>
+        FastAPI · React · Redis · Docker · Kubernetes · Supabase
+      </motion.p>
     </motion.div>
   )
 }

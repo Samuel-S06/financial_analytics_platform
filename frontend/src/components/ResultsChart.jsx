@@ -13,14 +13,15 @@ import {
 import { useCurrency } from '../context/CurrencyContext'
 import { formatMonth } from '../lib/format'
 
-// Chart-only tokens. --accent (#2d9596) is tuned for buttons and reads slightly
-// gray as a large data fill, so marks use the same teal stepped up in chroma.
-// Grid and axis text stay one step off the surface so the data is the only
-// thing that's loud.
-const MARK = '#0d9488'
-const GRID = '#e5e3dd'
-const AXIS_TEXT = '#6b7280'
-const SURFACE = '#ffffff'
+// Grid and axis text sit one step off the surface so the data is the only
+// thing that's loud. MARK is --accent itself: buttons use the darker
+// --accent-dark, which is what carries white label text at AA.
+// Kept in sync with the CSS custom properties by hand: Recharts wants these
+// as props, and a var() reference can't be read back for the tooltip cursor.
+const MARK = '#0d9488'        // --accent
+const GRID = '#e3e1db'        // --border
+const AXIS_TEXT = '#5d646f'   // --text-muted
+const SURFACE = '#ffffff'     // --surface
 
 // Both charts plot a single series, so there is no legend: the card heading
 // already says what is being measured, and a one-swatch legend box would just
