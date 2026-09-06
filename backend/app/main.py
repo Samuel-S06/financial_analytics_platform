@@ -55,10 +55,11 @@ app = FastAPI(
 # this is a no-op. It matters when the frontend is deployed separately - e.g.
 # a static host talking to the API on another domain - where the browser
 # sends a preflight before every non-GET request.
-if settings.cors_origin_list:
+if settings.cors_origin_list or settings.cors_origin_regex:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
+        allow_origin_regex=settings.cors_origin_regex or None,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

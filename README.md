@@ -1,11 +1,44 @@
 # Spendline
 
+**Live: <https://spendline-ots2.vercel.app>**
+
 Upload a CSV of bank transactions and get a spending breakdown, a month-by-month
 trend, and a savings simulation — behind per-user accounts, with totals viewable
 in a second currency.
 
-Built for CIS 1912 as a Kubernetes deployment, then extended with authentication,
-a live external API, and a motion pass on the landing page.
+Built for CIS 1912 as a Kubernetes deployment, then extended with
+authentication, a live external API, and a motion pass on the landing page.
+
+| Piece | Where it runs |
+|---|---|
+| Frontend | Vercel — <https://spendline-ots2.vercel.app> |
+| API + Redis | Render — <https://spendline-api.onrender.com> |
+| Auth | Supabase |
+
+> Render's free tier sleeps after inactivity, so the first request after a quiet
+> spell takes ~30s to wake. If the page seems to hang on first load, that's why.
+
+## Try it in two minutes
+
+The repo ships a sample CSV so you don't need a bank export of your own.
+
+1. Open <https://spendline-ots2.vercel.app>
+2. **Create account** — any email and a password of six characters or more
+3. **Confirm the account.** This project keeps Supabase's email confirmation on,
+   so check your inbox for the link. (If you're running it yourself, an admin
+   can confirm the user under Supabase → Authentication → Users instead.)
+4. **Sign in**
+5. Hit **Try it with sample data** under the upload zone — it runs
+   [`sample-data/sample_transactions.csv`](sample-data/sample_transactions.csv)
+   straight through, no download needed. Dragging the file in works too.
+6. The breakdown appears: **$1,544.84** across four categories over three
+   months, with Groceries the largest at $951.90.
+7. **Switch the currency** in the header — every total, axis label and bar
+   label converts at live ECB rates. The underlying data stays in USD.
+8. **Run a simulation**: goal $600 over 12 months, cutting from Dining and
+   Entertainment. It comes back feasible, with a recommended monthly budget per
+   category.
+9. **Sign out** — the session clears and the landing page returns.
 
 ## What it does
 
@@ -134,7 +167,8 @@ field name.
 | Variable | Required | Value / where it comes from | Entry |
 |---|---|---|---|
 | `SUPABASE_URL` | **Yes** | Supabase → Project Settings → API → **Project URL** | **Manual** (`sync: false`) |
-| `CORS_ORIGINS` | **Yes** | Your Vercel origin, e.g. `https://spendline.vercel.app`. Comma-separated for more than one | **Manual** (`sync: false`) |
+| `CORS_ORIGINS` | **Yes** | Your Vercel origin, e.g. `https://spendline-ots2.vercel.app`. Comma-separated for more than one | **Manual** (`sync: false`) |
+| `CORS_ORIGIN_REGEX` | No | Covers every Vercel URL for the project at once, including the per-deployment subdomains an exact list misses: `https://spendline-ots2(-[a-z0-9-]+)?\.vercel\.app`. Keep it anchored | **Manual** |
 | `AUTH_ENABLED` | **Yes** | `true` | Auto — set in `render.yaml` |
 | `USE_REDIS` | **Yes** | `true` | Auto — set in `render.yaml` |
 | `REDIS_HOST` | **Yes** | The Redis instance's host | Auto — `fromService` |
@@ -219,9 +253,10 @@ touch-up.
   failing with `over_email_send_rate_limit`. Turning it off needs no SMTP.
   Leaving it on means confirming each account by hand under **Authentication →
   Users**.
-- **Vercel preview deployments** get their own subdomain per deployment, which
-  the production origin in `CORS_ORIGINS` does not cover. Add them explicitly if
-  previews need to reach the API.
+- **Vercel gives every deployment its own subdomain**, which the production
+  origin in `CORS_ORIGINS` does not cover — opening a build from Vercel's
+  dashboard rather than the production alias fails CORS on every request. Set
+  `CORS_ORIGIN_REGEX` to cover them all, or stick to the production URL.
 - **Render's free tier sleeps** after inactivity; the first request afterwards
   takes ~30s. Worth warming before a demo.
 

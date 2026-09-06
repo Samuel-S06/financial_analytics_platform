@@ -117,3 +117,20 @@ def test_listing_is_newest_first(client, sample_csv):
     second = _upload(client, sample_csv)
     returned = [j["job_id"] for j in client.get("/jobs").json()]
     assert returned == [second, first]
+
+
+# --- CORS origin regex ------------------------------------------------------
+
+
+def test_origin_regex_matches_preview_subdomains():
+    """Hosts that give each deployment its own subdomain need a pattern."""
+    import re
+
+    pattern = r"https://spendline-ots2(-[a-z0-9-]+)?\.vercel\.app"
+    assert re.fullmatch(pattern, "https://spendline-ots2.vercel.app")
+    assert re.fullmatch(
+        pattern, "https://spendline-ots2-r37oaasfh-samuels-projects-916b02ca.vercel.app"
+    )
+    # Anchored, so it must not hand CORS to somebody else's Vercel site.
+    assert not re.fullmatch(pattern, "https://evil.vercel.app")
+    assert not re.fullmatch(pattern, "https://spendline-ots2.vercel.app.evil.com")

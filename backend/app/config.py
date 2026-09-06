@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     # Vite proxy sit in front), so this is empty-by-default and only matters
     # once the frontend is hosted separately from the backend.
     cors_origins: str = "http://localhost:5173"
+    # Hosts like Vercel give every deployment its own subdomain, so an exact
+    # origin list only ever covers the production alias and every preview URL
+    # fails CORS. A regex covers the whole project. Keep it anchored - a
+    # pattern like ".*vercel.app" would allow anybody's Vercel site.
+    cors_origin_regex: str = ""
 
     # --- Auth ---------------------------------------------------------------
     # Defaults to ON so a misconfigured deploy fails closed rather than serving
