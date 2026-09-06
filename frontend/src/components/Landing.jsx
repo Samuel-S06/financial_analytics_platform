@@ -172,7 +172,7 @@ VITE_SUPABASE_ANON_KEY=<publishable key>`}
       initial="hidden"
       animate="shown"
     >
-      <div className="landing-top">
+      <div className="landing-top on-field">
         {/* Decorative depth behind the hero: a full-bleed wash plus four
             blurred shapes. Only transform and opacity animate - moving the
             blur radius itself would force a repaint of a very large blurred

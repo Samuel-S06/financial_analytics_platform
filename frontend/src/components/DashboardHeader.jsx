@@ -14,12 +14,12 @@ import Wordmark from './Wordmark'
  */
 export default function DashboardHeader({ email, meta, controls, onSignOut }) {
   return (
-    <header className="dashboard-header">
+    <header className="dashboard-header on-field">
       <div className="dashboard-bar">
         <Wordmark />
         <div className="dashboard-controls">
           {controls}
-          <button className="btn secondary" onClick={onSignOut}>
+          <button className="btn secondary on-dark" onClick={onSignOut}>
             Sign out
           </button>
         </div>
