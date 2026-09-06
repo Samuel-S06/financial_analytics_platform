@@ -1208,3 +1208,24 @@ body {
 .upload-sample a {
   color: var(--accent-dark);
 }
+
+/* --- Crash screen --------------------------------------------------------- */
+
+.crash-card {
+  max-width: 760px;
+  margin: 3rem auto;
+}
+
+.crash-detail {
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 1.25rem;
+}
+
+.crash-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
